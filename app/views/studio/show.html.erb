@@ -1,0 +1,15 @@
+<div
+  id="app-shell"
+  data-controller="piano-studio"
+  data-piano-studio-initial-song-value="<%= @active_song&.slug || 'todo-no' %>"
+  data-piano-studio-importing-song-value="<%= @importing_song&.slug.to_s %>"
+  class="max-w-5xl mx-auto px-3 sm:px-5 py-3 flex flex-col gap-3"
+>
+  <script id="piano-catalog-data" type="application/json">
+    <%= raw json_escape(@catalog_map.to_json) %>
+  </script>
+
+  <%= render "studio/header", native_songs: @native_songs, imported_songs: @imported_songs, active_song: @active_song, importing_song: @importing_song %>
+  <%= render "studio/player_and_sheet" %>
+  <%= render "studio/keyboards_and_dock" %>
+</div>

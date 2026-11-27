@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+:root {
+  --bg-page: #f4f6f9;
+  --bg-card: #ffffff;
+  --bg-subtle: #eef2f6;
+  --bg-sheet: #ffffff;
+  --border: #d8e0ea;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --lh-blue: #2563eb;
+  --rh-green: #059669;
+  --vox-amber: #d97706;
+}
+
+html.dark {
+  --bg-page: #090e1a;
+  --bg-card: #111827;
+  --bg-subtle: #1e293b;
+  --bg-sheet: #0f172a;
+  --border: #334155;
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --lh-blue: #93c5fd;
+  --rh-green: #6ee7b7;
+  --vox-amber: #fcd34d;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+}
+
+.font-mono-code { font-family: 'JetBrains Mono', monospace; }
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.subtle {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+.sheet-surface {
+  background-color: var(--bg-sheet);
+  border: 1px solid var(--border);
+}
+select option, select optgroup {
+  background-color: var(--bg-card);
+  color: var(--text-main);
+}
+
+/* Modo Foco */
+body.focus-mode .hide-in-focus { display: none !important; }
+body.focus-mode #app-shell { max-width: 1180px; padding-top: 0.5rem; }
+
+/* Partitura SVG */
+.sheet-container {
+  width: 100%;
+  height: 310px;
+  overflow: hidden;
+}
+.sheet-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Teclado Fixo */
+.piano-wrap {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.piano-bed {
+  position: relative;
+  height: 168px;
+  min-width: 780px;
+  width: 100%;
+  user-select: none;
+}
+.voice-bed {
+  position: relative;
+  height: 82px;
+  min-width: 660px;
+  width: 100%;
+  user-select: none;
+}
+.w-key {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border: 1px solid #94a3b8;
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 7px;
+  cursor: pointer;
+  z-index: 1;
+  transition: background 0.08s, transform 0.06s;
+}
+html.dark .w-key {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  border-color: #475569;
+}
+.w-key:hover { background: #e2e8f0; }
+.b-key {
+  position: absolute;
+  top: 0;
+  height: 60%;
+  background: linear-gradient(180deg, #334155 0%, #0f172a 100%);
+  border: 1px solid #020617;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 5px;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+  transition: background 0.08s;
+}
+.b-key:hover { background: #475569; }
+
+/* Estados das teclas */
+.w-key.lh-target { background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important; border-color: #2563eb !important; }
+.b-key.lh-target { background: linear-gradient(180deg, #2563eb 0%, #1e40af 100%) !important; }
+.w-key.rh-target { background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%) !important; border-color: #059669 !important; }
+.b-key.rh-target { background: linear-gradient(180deg, #059669 0%, #065f46 100%) !important; }
+.w-key.vox-target { background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%) !important; border-color: #d97706 !important; }
+.b-key.vox-target { background: linear-gradient(180deg, #d97706 0%, #92400e 100%) !important; }
+
+.w-key.now-playing, .b-key.now-playing {
+  transform: translateY(2px);
+  box-shadow: inset 0 0 0 3px #f59e0b, 0 0 14px rgba(245, 158, 11, 0.7) !important;
+  z-index: 4;
+}
+
+.key-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  pointer-events: none;
+  line-height: 1;
+}
+.b-key .key-lbl {
+  font-size: 9px;
+  color: #e2e8f0;
+}
+.f-dot {
+  position: absolute;
+  top: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+  pointer-events: none;
+  z-index: 5;
+}
+.f-dot.lh { background-color: #2563eb; }
+.f-dot.rh { background-color: #059669; }
+.f-dot.vox { background-color: #d97706; top: 5px; width: 18px; height: 18px; font-size: 10px; }
+
+.ord-tag {
+  position: absolute;
+  top: 32px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #0f172a;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 5;
+}

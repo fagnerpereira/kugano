@@ -1,0 +1,89 @@
+<section class="card rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col gap-3">
+  <!-- Barra de Play no Topo -->
+  <div class="subtle rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-1.5 flex-wrap">
+      <button type="button" id="btn-play-song" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition shadow-sm" title="Atalho: Barra de Espaço">
+        🎵 Música Inteira
+      </button>
+      <button type="button" id="btn-play-section" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition">
+        ▶▶ Seção
+      </button>
+      <button type="button" id="btn-play-step" class="px-3 py-1.5 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+        ▶ Compasso
+      </button>
+      <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl card text-xs font-semibold text-[var(--text-main)] cursor-pointer">
+        <input type="checkbox" id="chk-loop" class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+        Loop
+      </label>
+      <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl card text-xs font-semibold text-[var(--text-main)] cursor-pointer">
+        <input type="checkbox" id="chk-metro" class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+        Metrônomo
+      </label>
+    </div>
+
+    <div class="flex items-center gap-1">
+      <button type="button" id="btn-prev" class="px-2.5 py-1 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-80 disabled:opacity-40 cursor-pointer" title="Compasso Anterior (←)">
+        ◀
+      </button>
+      <select id="step-select" aria-label="Escolher Compasso" class="px-2.5 py-1 rounded-xl text-xs font-semibold card text-[var(--text-main)] max-w-[190px] cursor-pointer"></select>
+      <button type="button" id="btn-next" class="px-2.5 py-1 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-80 disabled:opacity-40 cursor-pointer" title="Próximo Compasso (→)">
+        ▶
+      </button>
+    </div>
+  </div>
+
+  <!-- Cabeçalho do compasso -->
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div id="chord-badge" class="font-mono-code text-base sm:text-lg font-extrabold px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border border-emerald-500/40 whitespace-nowrap">
+        D
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span id="measure-badge" class="font-mono-code text-[11px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-800 dark:text-blue-200 whitespace-nowrap">
+            Comp. 1
+          </span>
+          <h2 id="step-title" class="text-sm sm:text-base font-extrabold truncate text-[var(--text-main)]">
+            Introdução — D
+          </h2>
+        </div>
+        <p id="step-lyric" class="text-xs font-medium text-[var(--text-muted)] truncate mt-0.5">
+          Abertura instrumental (0:00)
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5 flex-wrap">
+      <button type="button" id="btn-sheet-zoom" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+        🔍 Zoom: 1 Compasso
+      </button>
+
+      <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl subtle text-xs font-semibold text-[var(--text-main)] cursor-pointer select-none">
+        <input type="checkbox" id="chk-notes-on-sheet" checked class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+        Cifras
+      </label>
+
+      <button type="button" id="btn-unfreeze" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/25 text-amber-900 dark:text-amber-200 cursor-pointer">
+        ✕ Liberar tempo
+      </button>
+    </div>
+  </div>
+
+  <!-- PARTITURA SVG -->
+  <div class="sheet-container sheet-surface rounded-xl shadow-inner">
+    <svg id="sheet-svg" class="sheet-svg" viewBox="0 0 960 310" role="img" aria-label="Partitura sincronizada"></svg>
+  </div>
+
+  <!-- Dica e legenda -->
+  <div class="hide-in-focus flex items-center justify-between gap-2 flex-wrap px-3 py-2 rounded-xl subtle text-xs">
+    <div class="leading-snug">
+      <strong class="font-bold text-blue-700 dark:text-blue-300">Dica:</strong>
+      <span id="step-tip" class="text-[var(--text-main)]"></span>
+    </div>
+    <div class="flex items-center gap-2 text-[11px] flex-shrink-0">
+      <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-bold">Sol = MD</span>
+      <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 font-bold">Fá = ME</span>
+      <span id="legend-voice-pill" class="hidden px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-900 dark:text-amber-200 font-bold">◆ Voz</span>
+    </div>
+  </div>
+</section>

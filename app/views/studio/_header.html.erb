@@ -1,0 +1,108 @@
+<header class="card rounded-2xl px-4 py-3 shadow-sm flex flex-col gap-2.5">
+  <div class="flex flex-wrap items-center justify-between gap-2.5">
+    <div class="flex items-center gap-3 min-w-0 flex-wrap">
+      <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-base flex-shrink-0 shadow-sm">
+        🎹
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <select
+            id="song-select"
+            aria-label="Escolher Música"
+            class="subtle rounded-xl px-2.5 py-1 text-sm sm:text-base font-extrabold text-[var(--text-main)] cursor-pointer focus:outline-none"
+          >
+            <optgroup label="Repertório Nativo">
+              <% native_songs.each do |song| %>
+                <option value="<%= song.slug %>" <%= "selected" if song.slug == (active_song&.slug || "todo-no") %>>
+                  <%= song.title %>
+                </option>
+              <% end %>
+            </optgroup>
+            <% if imported_songs.ready.any? %>
+              <optgroup label="Partituras Importadas">
+                <% imported_songs.ready.each do |song| %>
+                  <option value="<%= song.slug %>" <%= "selected" if song.slug == active_song&.slug %>>
+                    <%= song.title %> (<%= song.source_type.upcase %>)
+                  </option>
+                <% end %>
+              </optgroup>
+            <% end %>
+          </select>
+          <span id="song-meta-tag" class="text-xs font-semibold text-[var(--text-muted)]">
+            <%= active_song&.payload&.dig("meta", "info") || "Tom: D • 76 BPM • 4/4" %>
+          </span>
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <span id="step-counter" class="font-mono-code text-[11px] font-bold text-blue-600 dark:text-blue-300">
+            Compasso 1 / <%= active_song&.total_measures || 80 %>
+          </span>
+          <span class="text-[var(--border)]">•</span>
+          <span id="audio-engine-badge" class="text-[11px] font-medium text-[var(--text-muted)]">⏳ Carregando Piano...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-1.5 subtle rounded-xl px-2.5 py-1">
+        <label for="level-select" class="text-[11px] font-bold text-[var(--text-muted)]">Nível:</label>
+        <select id="level-select" aria-label="Nível Progressivo Conectado" class="bg-[var(--bg-subtle)] text-xs font-extrabold text-[var(--text-main)] rounded-lg px-1.5 py-0.5 focus:outline-none cursor-pointer">
+          <option value="easy">1. Base Essencial (Fácil)</option>
+          <option value="medium">2. + Arpejos &amp; Groove (Médio)</option>
+          <option value="original">3. + Detalhes Completos (Avançado)</option>
+          <option value="faithful" selected>4. Original Fiel (Sem Firula)</option>
+        </select>
+      </div>
+
+      <button type="button" id="btn-toggle-voice" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+        🎤 Voz
+      </button>
+
+      <button type="button" id="btn-toggle-map" class="hide-in-focus px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+        🗺️ Seções
+      </button>
+
+      <button type="button" id="btn-toggle-import" class="hide-in-focus px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+        📥 Importar
+      </button>
+
+      <button type="button" id="btn-focus" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition" title="Modo Foco sem distrações (Tecla F)">
+        🎯 Foco
+      </button>
+
+      <button type="button" id="btn-theme" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition" title="Alternar Tema Claro/Escuro">
+        🌓
+      </button>
+    </div>
+  </div>
+
+  <!-- Painel recolhível de Seções -->
+  <div id="sections-drawer" class="hidden hide-in-focus pt-2 border-t border-[var(--border)] flex flex-col gap-2">
+    <div id="section-tabs" class="flex items-center gap-1.5 flex-wrap"></div>
+    <div id="timeline-strip" class="flex items-center gap-1 overflow-x-auto pb-1"></div>
+  </div>
+
+  <!-- Painel recolhível de Importação Determinística (Solid Queue) -->
+  <% show_import_drawer = local_assigns[:importing_song].present? || flash[:notice].present? || flash[:alert].present? %>
+  <div id="import-drawer" class="<%= 'hidden ' unless show_import_drawer %>hide-in-focus pt-2.5 border-t border-[var(--border)] flex flex-col gap-2">
+    <%= form_with scope: :song, url: import_songs_path, method: :post, multipart: true, id: "import-song-form", class: "flex flex-wrap items-center gap-2 text-xs" do |f| %>
+      <span class="font-extrabold text-[var(--text-main)]">Importar Partitura/MIDI (100% Determinístico via Solid Queue):</span>
+      <%= f.text_field :title, placeholder: "Título da música (opcional)", class: "subtle rounded-lg px-2.5 py-1 text-xs font-semibold text-[var(--text-main)]" %>
+      <%= f.file_field :source_file, accept: ".musicxml,.xml,.mxl,.mid,.midi,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.wav,.mp3", class: "subtle rounded-lg px-2 py-1 text-xs text-[var(--text-main)] cursor-pointer" %>
+      <%= f.text_field :sheets, placeholder: "Páginas (ex: 1-4)", class: "subtle rounded-lg px-2 py-1 text-xs font-semibold text-[var(--text-main)] w-32" %>
+      <%= f.select :ocr_language, [["OCR: Inglês", "eng"], ["OCR: Português", "por"], ["OCR: EN + PT", "eng+por"]], { selected: "eng" }, class: "subtle rounded-lg px-2 py-1 text-xs font-semibold text-[var(--text-main)] cursor-pointer" %>
+      <%= f.text_field :source_url, placeholder: "ou URL de Áudio/YouTube", class: "subtle rounded-lg px-2.5 py-1 text-xs font-semibold text-[var(--text-main)]" %>
+      <%= f.submit "Processar Partitura", class: "px-3 py-1 rounded-lg font-extrabold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition" %>
+      <span id="import-status-badge" class="font-mono-code text-[11px] font-bold text-[var(--text-muted)]">
+        <% if local_assigns[:importing_song]&.processing? %>
+          ⏳ Transcrevendo "<%= importing_song.title %>" no Solid Queue...
+        <% elsif local_assigns[:importing_song]&.failed? %>
+          ❌ Falha ao importar "<%= importing_song.title %>": <%= importing_song.error_message %>
+        <% elsif flash[:alert].present? %>
+          ❌ <%= flash[:alert] %>
+        <% elsif flash[:notice].present? %>
+          ✅ <%= flash[:notice] %>
+        <% end %>
+      </span>
+    <% end %>
+  </div>
+</header>

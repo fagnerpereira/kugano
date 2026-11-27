@@ -1,0 +1,45 @@
+services:
+  # Rails web server served through Thruster on port 80 (mapped to host port 3000)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local_docker_compose_secret_key_base_0123456789abcdef0123456789abcdef}
+      ASSUME_SSL: "false"
+      FORCE_SSL: "false"
+      AUDIVERIS_BIN: /usr/local/bin/audiveris
+      BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
+      YTDLP_BIN: /usr/bin/yt-dlp
+    volumes:
+      - sqlite_storage:/rails/storage
+    command: bash -c "bin/rails db:prepare db:seed && ./bin/thrust ./bin/rails server"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/up"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Dedicated Solid Queue worker executing OMR and audio transcription jobs (no Redis/Sidekiq)
+  jobs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local_docker_compose_secret_key_base_0123456789abcdef0123456789abcdef}
+      AUDIVERIS_BIN: /usr/local/bin/audiveris
+      BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
+      YTDLP_BIN: /usr/bin/yt-dlp
+    volumes:
+      - sqlite_storage:/rails/storage
+    command: ./bin/jobs
+
+volumes:
+  sqlite_storage:

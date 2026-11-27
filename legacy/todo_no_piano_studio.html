@@ -1,0 +1,2823 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estúdio de Piano — Todo Nó &amp; Repertório</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #f4f6f9;
+      --bg-card: #ffffff;
+      --bg-subtle: #eef2f6;
+      --bg-sheet: #ffffff;
+      --border: #d8e0ea;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --lh-blue: #2563eb;
+      --rh-green: #059669;
+      --vox-amber: #d97706;
+    }
+    html.dark {
+      --bg-page: #090e1a;
+      --bg-card: #111827;
+      --bg-subtle: #1e293b;
+      --bg-sheet: #0f172a;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --lh-blue: #93c5fd;
+      --rh-green: #6ee7b7;
+      --vox-amber: #fcd34d;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+    }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+    .subtle {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border);
+    }
+    .sheet-surface {
+      background-color: var(--bg-sheet);
+      border: 1px solid var(--border);
+    }
+    select option, select optgroup {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    /* Modo Foco */
+    body.focus-mode .hide-in-focus { display: none !important; }
+    body.focus-mode #app-shell { max-width: 1180px; padding-top: 0.5rem; }
+
+    /* Partitura SVG */
+    .sheet-container {
+      width: 100%;
+      height: 310px;
+      overflow: hidden;
+    }
+    .sheet-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Teclado Fixo */
+    .piano-wrap {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .piano-bed {
+      position: relative;
+      height: 168px;
+      min-width: 780px;
+      width: 100%;
+      user-select: none;
+    }
+    .voice-bed {
+      position: relative;
+      height: 82px;
+      min-width: 660px;
+      width: 100%;
+      user-select: none;
+    }
+    .w-key {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+      border: 1px solid #94a3b8;
+      border-bottom-left-radius: 7px;
+      border-bottom-right-radius: 7px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 7px;
+      cursor: pointer;
+      z-index: 1;
+      transition: background 0.08s, transform 0.06s;
+    }
+    html.dark .w-key {
+      background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+      border-color: #475569;
+    }
+    .w-key:hover { background: #e2e8f0; }
+    .b-key {
+      position: absolute;
+      top: 0;
+      height: 60%;
+      background: linear-gradient(180deg, #334155 0%, #0f172a 100%);
+      border: 1px solid #020617;
+      border-bottom-left-radius: 5px;
+      border-bottom-right-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 5px;
+      cursor: pointer;
+      z-index: 3;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+      transition: background 0.08s;
+    }
+    .b-key:hover { background: #475569; }
+
+    /* Estados das teclas */
+    .w-key.lh-target { background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important; border-color: #2563eb !important; }
+    .b-key.lh-target { background: linear-gradient(180deg, #2563eb 0%, #1e40af 100%) !important; }
+    .w-key.rh-target { background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%) !important; border-color: #059669 !important; }
+    .b-key.rh-target { background: linear-gradient(180deg, #059669 0%, #065f46 100%) !important; }
+    .w-key.vox-target { background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%) !important; border-color: #d97706 !important; }
+    .b-key.vox-target { background: linear-gradient(180deg, #d97706 0%, #92400e 100%) !important; }
+
+    .w-key.now-playing, .b-key.now-playing {
+      transform: translateY(2px);
+      box-shadow: inset 0 0 0 3px #f59e0b, 0 0 14px rgba(245, 158, 11, 0.7) !important;
+      z-index: 4;
+    }
+
+    .key-lbl {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #334155;
+      pointer-events: none;
+      line-height: 1;
+    }
+    .b-key .key-lbl {
+      font-size: 9px;
+      color: #e2e8f0;
+    }
+    .f-dot {
+      position: absolute;
+      top: 7px;
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .f-dot.lh { background-color: #2563eb; }
+    .f-dot.rh { background-color: #059669; }
+    .f-dot.vox { background-color: #d97706; top: 5px; width: 18px; height: 18px; font-size: 10px; }
+
+    .ord-tag {
+      position: absolute;
+      top: 32px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #0f172a;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <div id="app-shell" class="max-w-5xl mx-auto px-3 sm:px-5 py-3 flex flex-col gap-3">
+
+    <!-- 1. CABEÇALHO E SELETOR DE MÚSICA / NÍVEL -->
+    <header class="card rounded-2xl px-4 py-3 shadow-sm flex flex-col gap-2.5">
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-3 min-w-0 flex-wrap">
+          <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-base flex-shrink-0 shadow-sm">
+            🎹
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <select id="song-select" aria-label="Escolher Música" class="subtle rounded-xl px-2.5 py-1 text-sm sm:text-base font-extrabold text-[var(--text-main)] cursor-pointer focus:outline-none">
+                <option value="todo-no" selected>Todo Nó — Dingo Bells</option>
+                <option value="alabama-song">Alabama Song — The Doors</option>
+                <option value="bach-prelude-c">Prelude in C BWV 846 — J. S. Bach</option>
+                <option value="hallelujah">Hallelujah — Leonard Cohen</option>
+                <option value="country-roads">Take Me Home, Country Roads — John Denver</option>
+                <option value="binks-sake">Binks' Sake (One Piece) — Kouhei Tanaka</option>
+                <option value="sadness-sorrow">Sadness and Sorrow (Naruto) — Toshiro Masuda</option>
+                <option value="rocket-man">Rocket Man — Elton John</option>
+              </select>
+              <span id="song-meta-tag" class="text-xs font-semibold text-[var(--text-muted)]">Tom: D • 76 BPM • 4/4</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span id="step-counter" class="font-mono-code text-[11px] font-bold text-blue-600 dark:text-blue-300">Compasso 1 / 81</span>
+              <span class="text-[var(--border)]">•</span>
+              <span id="audio-engine-badge" class="text-[11px] font-medium text-[var(--text-muted)]">⏳ Carregando Piano...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-1.5 subtle rounded-xl px-2.5 py-1">
+            <label for="level-select" class="text-[11px] font-bold text-[var(--text-muted)]">Nível:</label>
+            <select id="level-select" aria-label="Nível Progressivo Conectado" class="bg-[var(--bg-subtle)] text-xs font-extrabold text-[var(--text-main)] rounded-lg px-1.5 py-0.5 focus:outline-none cursor-pointer">
+              <option value="easy">1. Base Essencial (Fácil)</option>
+              <option value="medium">2. + Arpejos &amp; Groove (Médio)</option>
+              <option value="original">3. + Detalhes Completos (Avançado)</option>
+              <option value="faithful" selected>4. Original Fiel (Sem Firula)</option>
+            </select>
+          </div>
+
+          <button type="button" id="btn-toggle-voice" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+            🎤 Voz
+          </button>
+
+          <button type="button" id="btn-toggle-map" class="hide-in-focus px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+            🗺️ Seções
+          </button>
+
+          <button type="button" id="btn-focus" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition" title="Modo Foco sem distrações (Tecla F)">
+            🎯 Foco
+          </button>
+
+          <button type="button" id="btn-theme" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition" title="Alternar Tema Claro/Escuro">
+            🌓
+          </button>
+        </div>
+      </div>
+
+      <!-- Painel recolhível de Seções -->
+      <div id="sections-drawer" class="hidden hide-in-focus pt-2 border-t border-[var(--border)] flex flex-col gap-2">
+        <div id="section-tabs" class="flex items-center gap-1.5 flex-wrap"></div>
+        <div id="timeline-strip" class="flex items-center gap-1 overflow-x-auto pb-1"></div>
+      </div>
+    </header>
+
+    <!-- 2. PLAYER NO TOPO + PARTITURA AMPLIADA -->
+    <section class="card rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col gap-3">
+      <!-- Barra de Play no Topo -->
+      <div class="subtle rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" id="btn-play-song" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition shadow-sm" title="Atalho: Barra de Espaço">
+            🎵 Música Inteira
+          </button>
+          <button type="button" id="btn-play-section" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition">
+            ▶▶ Seção
+          </button>
+          <button type="button" id="btn-play-step" class="px-3 py-1.5 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+            ▶ Compasso
+          </button>
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl card text-xs font-semibold text-[var(--text-main)] cursor-pointer">
+            <input type="checkbox" id="chk-loop" class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+            Loop
+          </label>
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl card text-xs font-semibold text-[var(--text-main)] cursor-pointer">
+            <input type="checkbox" id="chk-metro" class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+            Metrônomo
+          </label>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button type="button" id="btn-prev" class="px-2.5 py-1 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-80 disabled:opacity-40 cursor-pointer" title="Compasso Anterior (←)">
+            ◀
+          </button>
+          <select id="step-select" aria-label="Escolher Compasso" class="px-2.5 py-1 rounded-xl text-xs font-semibold card text-[var(--text-main)] max-w-[190px] cursor-pointer"></select>
+          <button type="button" id="btn-next" class="px-2.5 py-1 rounded-xl text-xs font-bold card text-[var(--text-main)] hover:opacity-80 disabled:opacity-40 cursor-pointer" title="Próximo Compasso (→)">
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- Cabeçalho do compasso -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="chord-badge" class="font-mono-code text-base sm:text-lg font-extrabold px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border border-emerald-500/40 whitespace-nowrap">
+            D
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span id="measure-badge" class="font-mono-code text-[11px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-800 dark:text-blue-200 whitespace-nowrap">
+                Comp. 1
+              </span>
+              <h2 id="step-title" class="text-sm sm:text-base font-extrabold truncate text-[var(--text-main)]">
+                Introdução — D
+              </h2>
+            </div>
+            <p id="step-lyric" class="text-xs font-medium text-[var(--text-muted)] truncate mt-0.5">
+              Abertura instrumental (0:00)
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" id="btn-sheet-zoom" class="px-2.5 py-1.5 rounded-xl text-xs font-bold subtle text-[var(--text-main)] hover:opacity-85 cursor-pointer transition">
+            🔍 Zoom: 1 Compasso
+          </button>
+
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl subtle text-xs font-semibold text-[var(--text-main)] cursor-pointer select-none">
+            <input type="checkbox" id="chk-notes-on-sheet" checked class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer">
+            Cifras
+          </label>
+
+          <button type="button" id="btn-unfreeze" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/25 text-amber-900 dark:text-amber-200 cursor-pointer">
+            ✕ Liberar tempo
+          </button>
+        </div>
+      </div>
+
+      <!-- PARTITURA SVG -->
+      <div class="sheet-container sheet-surface rounded-xl shadow-inner">
+        <svg id="sheet-svg" class="sheet-svg" viewBox="0 0 960 310" role="img" aria-label="Partitura sincronizada"></svg>
+      </div>
+
+      <!-- Dica e legenda -->
+      <div class="hide-in-focus flex items-center justify-between gap-2 flex-wrap px-3 py-2 rounded-xl subtle text-xs">
+        <div class="leading-snug">
+          <strong class="font-bold text-blue-700 dark:text-blue-300">Dica:</strong>
+          <span id="step-tip" class="text-[var(--text-main)]"></span>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] flex-shrink-0">
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-bold">Sol = MD</span>
+          <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 font-bold">Fá = ME</span>
+          <span id="legend-voice-pill" class="hidden px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-900 dark:text-amber-200 font-bold">◆ Voz</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TECLADO PRINCIPAL + MÃOS E ANDAMENTO -->
+    <section class="card rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col gap-3">
+      <!-- Teclado Guia da Voz (opcional) -->
+      <div id="voice-keyboard-panel" class="hidden hide-in-focus subtle rounded-xl p-2.5 border-l-4 border-l-amber-500 flex flex-col gap-1.5">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <span class="text-xs font-bold text-amber-800 dark:text-amber-200">
+            🎤 Guia da Voz (Opcional)
+          </span>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <select id="voice-timbre-select" aria-label="Timbre da Voz" class="px-2 py-0.5 rounded-lg text-[11px] font-semibold card text-[var(--text-main)] cursor-pointer">
+              <option value="rhodes" selected>Rhodes</option>
+              <option value="piano">Piano Agudo</option>
+              <option value="oohs">Voz Suave</option>
+            </select>
+            <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-main)] cursor-pointer">
+              <input type="checkbox" id="chk-voice-audio" checked class="w-3.5 h-3.5 rounded accent-amber-500 cursor-pointer">
+              Ouvir
+            </label>
+          </div>
+        </div>
+        <div class="piano-wrap">
+          <div class="voice-bed" id="voice-bed"></div>
+        </div>
+      </div>
+
+      <!-- Teclado Fixo Principal (C2 a A5) -->
+      <div class="piano-wrap">
+        <div class="piano-bed" id="piano-bed"></div>
+      </div>
+
+      <!-- Dock de Prática -->
+      <div class="subtle rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-900 p-1 rounded-xl border border-[var(--border)] self-start sm:self-auto">
+          <button type="button" data-hand="both" class="hand-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition">2 Mãos</button>
+          <button type="button" data-hand="lh" class="hand-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition">Só Esquerda</button>
+          <button type="button" data-hand="rh" class="hand-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition">Só Direita</button>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <label for="bpm-slider" class="text-xs font-bold text-[var(--text-muted)]">
+            <span id="bpm-text" class="font-mono-code font-extrabold text-[var(--text-main)]">76 BPM</span>
+          </label>
+          <input type="range" id="bpm-slider" min="48" max="125" value="76" class="w-24 sm:w-28 accent-blue-600 cursor-pointer">
+          <div id="bpm-presets" class="flex items-center gap-1"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. TABELA DE NOTAS EM CIFRAS (C2 a A5)
+       ========================================================================== */
+    const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const FLAT_DISPLAY = { "A#": "Bb", "D#": "Eb", "G#": "Ab", "F#": "Gb", "C#": "Db" };
+
+    function midiToId(midi) {
+      const oct = Math.floor(midi / 12) - 1;
+      return SHARP_NAMES[midi % 12] + oct;
+    }
+
+    function displayCipher(noteId, chordName) {
+      const m = /^([A-G]#?)(\d)$/.exec(noteId);
+      if (!m) return noteId;
+      let base = m[1];
+      const oct = m[2];
+      if (chordName && /(Gm|Eb|Bb|Fm|Cm|C7|\bF\b|F7|Ab|Gb|Db|dim7)/.test(chordName) && FLAT_DISPLAY[base]) {
+        if ((base === "F#" || base === "C#") && !/(Gb|Db|Abm|Binks)/.test(chordName)) {
+          return base + oct;
+        }
+        if (base !== "G#" || /(Ab|Fm|Eb|Bb|Bdim7)/.test(chordName)) {
+          base = FLAT_DISPLAY[base];
+        }
+      }
+      return base + oct;
+    }
+
+    const PIANO_NOTES = [];
+    for (let m = 36; m <= 84; m++) {
+      const id = midiToId(m);
+      const isBlack = id.includes("#");
+      PIANO_NOTES.push({ id, midi: m, isBlack, freq: 440 * Math.pow(2, (m - 69) / 12) });
+    }
+    const NOTE_MAP = Object.fromEntries(PIANO_NOTES.map(n => [n.id, n]));
+    const VOICE_NOTES = PIANO_NOTES.filter(n => n.midi >= 55 && n.midi <= 84);
+
+    /* ==========================================================================
+       2. ESTRUTURA COMPLETA DE TODO NÓ (81 COMPASSOS)
+       ========================================================================== */
+    const TODO_NO_SECTIONS = [
+      { id: 1, name: "1. Intro" },
+      { id: 2, name: "2. Verso 1" },
+      { id: 3, name: "3. Verso 2" },
+      { id: 4, name: "4. Pré-Refrão 1" },
+      { id: 5, name: "5. Refrão 1" },
+      { id: 6, name: "6. Deixa o Sol (1)" },
+      { id: 7, name: "7. Retorno" },
+      { id: 8, name: "8. Verso 3 (Banda)" },
+      { id: 9, name: "9. Verso 4 (Banda)" },
+      { id: 10, name: "10. Pré-Refrão 2" },
+      { id: 11, name: "11. Refrão 2 (2x)" },
+      { id: 12, name: "12. Coro Lá-rá-rá" }
+    ];
+
+    function mIntroD(level, customTip) {
+      const tip = customTip || (level === "easy"
+        ? "Nível 1: ME segura D2; MD marca D (D4–F#4–A4) nos tempos 1 e 3."
+        : "Nível 2+: ME alterna D2 → A2; MD pulsa em colcheias com o toque cromático A#4 no tempo 4e.");
+      if (level === "easy") {
+        return {
+          chord: "D", pedal: false, tip,
+          lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }]
+        };
+      }
+      return {
+        chord: level === "original" ? "D → Daug" : "D", pedal: false, tip,
+        lh: [0, 4, 8, 12].map(t => ({ tick: t, dur: 4, notes: [t % 8 === 0 ? "D2" : "A2"], fingers: [t % 8 === 0 ? 5 : 2] })),
+        rh: [
+          { tick: 0, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 2, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 4, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 6, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 8, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 10, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 12, dur: 2, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] },
+          { tick: 14, dur: 2, notes: ["D4", "F#4", "A#4"], fingers: [1, 2, 4] }
+        ]
+      };
+    }
+
+    function mIntroD6(level, resolveChrom, customTip) {
+      const tip = customTip || "Mindinho (5) da MD no B4 formando D6. Mantenha a mão esquerda firme em D2 → A2.";
+      if (level === "easy") {
+        return {
+          chord: "D6 (B na ponta)", pedal: false, tip,
+          lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] }]
+        };
+      }
+      return {
+        chord: "D6 (B na ponta)", pedal: false, tip,
+        lh: [0, 4, 8, 12].map(t => ({ tick: t, dur: 4, notes: [t % 8 === 0 ? "D2" : "A2"], fingers: [t % 8 === 0 ? 5 : 2] })),
+        rh: [
+          { tick: 0, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 2, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 4, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 6, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 8, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 10, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 12, dur: 2, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] },
+          { tick: 14, dur: 2, notes: ["D4", "F#4", resolveChrom ? "A#4" : "A4"], fingers: [1, 2, 4] }
+        ]
+      };
+    }
+
+    function mVerseRestE7(level) {
+      if (level === "easy") {
+        return {
+          chord: "E7 (Descanso)", pedal: true,
+          tip: "Nível 1: acorde de descanso em E7 (E2 na ME | E4–G#4–D5 na MD).",
+          lh: [{ tick: 0, dur: 16, notes: ["E2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 16, notes: ["E4", "G#4", "D5"], fingers: [1, 2, 5] }]
+        };
+      }
+      return {
+        chord: "E7 (Arpejo Calmo)", pedal: true,
+        tip: "Descanso da voz: segure E2 na esquerda e deixe a MD fazer o arpejo calmo E4 → G#4 → B4 → D5.",
+        lh: [{ tick: 0, dur: 16, notes: ["E2"], fingers: [5] }],
+        rh: [
+          { tick: 0, dur: 4, notes: ["E4"], fingers: [1] },
+          { tick: 4, dur: 4, notes: ["G#4"], fingers: [2] },
+          { tick: 8, dur: 4, notes: ["B4"], fingers: [3] },
+          { tick: 12, dur: 4, notes: ["D5"], fingers: [5] }
+        ]
+      };
+    }
+
+    function mPreChorus(level, barType) {
+      if (barType === 1) {
+        return {
+          chord: "Em7", pedal: true,
+          tip: "Subida do baixo: E2 → B2 na esquerda enquanto a MD sustenta Em7 (G4–B4–D5).",
+          lh: level === "easy" ? [{ tick: 0, dur: 16, notes: ["E2"], fingers: [5] }] : [{ tick: 0, dur: 8, notes: ["E2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["B2"], fingers: [2] }],
+          rh: [{ tick: 0, dur: 8, notes: ["G4", "B4", "D5"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["G4", "B4", "E5"], fingers: [1, 2, 5] }]
+        };
+      }
+      if (barType === 2) {
+        return {
+          chord: "D/F#", pedal: true,
+          tip: "Baixo sobe para F#2 preparando a chegada em Sol Maior.",
+          lh: level === "easy" ? [{ tick: 0, dur: 16, notes: ["F#2"], fingers: [4] }] : [{ tick: 0, dur: 8, notes: ["F#2"], fingers: [4] }, { tick: 8, dur: 8, notes: ["D3"], fingers: [1] }],
+          rh: [{ tick: 0, dur: 8, notes: ["A4", "D5", "F#5"], fingers: [1, 3, 5] }, { tick: 8, dur: 8, notes: ["A4", "D5", "F#5"], fingers: [1, 3, 5] }]
+        };
+      }
+      if (barType === 3) {
+        return {
+          chord: "G → A", pedal: true,
+          tip: "Tempos 1–2 em G (G4–B4–D5) e tempos 3–4 em A (A4–C#5–E5).",
+          lh: [{ tick: 0, dur: 8, notes: ["G2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["G4", "B4", "D5"], fingers: [1, 3, 5] }, { tick: 8, dur: 8, notes: ["A4", "C#5", "E5"], fingers: [1, 3, 5] }]
+        };
+      }
+      return {
+        chord: "G → Gm → A", pedal: true,
+        tip: "No tempo 2, o dedo 3 da MD desce para Bb4 (Gm) e resolve em A no tempo 3.",
+        lh: [{ tick: 0, dur: 8, notes: ["G2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A2"], fingers: [5] }],
+        rh: [
+          { tick: 0, dur: 4, notes: ["G4", "B4", "D5"], fingers: [1, 3, 5] },
+          { tick: 4, dur: 4, notes: ["G4", "A#4", "D5"], fingers: [1, 3, 5] },
+          { tick: 8, dur: 8, notes: ["A4", "C#5", "E5"], fingers: [1, 3, 5] }
+        ]
+      };
+    }
+
+    function mChorusBar(level, idx) {
+      if (idx === 1) {
+        return {
+          chord: "D → C/D", pedal: true,
+          tip: "Refrão ('Alegria, a mão...'): D (tempos 1–2) muda para C/D (C4–E4–G4 no tempo 3) mantendo D2 no baixo!",
+          lh: [{ tick: 0, dur: 8, notes: ["D2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["D2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["C4", "E4", "G4"], fingers: [1, 2, 4] }]
+        };
+      }
+      if (idx === 2) {
+        return {
+          chord: "F#m → G", pedal: true,
+          tip: "'...que te tira o sono...': F#m (tempos 1–2) sobe para G (tempos 3–4).",
+          lh: [{ tick: 0, dur: 8, notes: ["F#2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["G2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["F#4", "A4", "C#5"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["G4", "B4", "D5"], fingers: [1, 2, 4] }]
+        };
+      }
+      if (idx === 3) {
+        return {
+          chord: "D (Arpejo)", pedal: true,
+          tip: "'...devagar': arpejo sutil da mão direita D4 → F#4 → A4 → B4 → A4 → F#4 sobre o baixo D2.",
+          lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+          rh: level === "easy"
+            ? [{ tick: 0, dur: 16, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }]
+            : [
+                { tick: 0, dur: 2, notes: ["D4"], fingers: [1] },
+                { tick: 2, dur: 2, notes: ["F#4"], fingers: [2] },
+                { tick: 4, dur: 2, notes: ["A4"], fingers: [3] },
+                { tick: 6, dur: 2, notes: ["B4"], fingers: [4] },
+                { tick: 8, dur: 2, notes: ["A4"], fingers: [3] },
+                { tick: 10, dur: 2, notes: ["F#4"], fingers: [2] },
+                { tick: 12, dur: 4, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }
+              ]
+        };
+      }
+      return {
+        chord: "G → D (Deixa o Sol)", pedal: true,
+        tip: "'E deixa o sol para secar': G (tempos 1–2) resolve em D (tempos 3–4) com arpejo fluido na MD.",
+        lh: [{ tick: 0, dur: 8, notes: ["G2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["D2"], fingers: [5] }],
+        rh: level === "easy"
+          ? [{ tick: 0, dur: 8, notes: ["G4", "B4", "D5"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }]
+          : [
+              { tick: 0, dur: 4, notes: ["G4", "B4", "D5"], fingers: [1, 2, 4] },
+              { tick: 4, dur: 2, notes: ["B4"], fingers: [2] },
+              { tick: 6, dur: 2, notes: ["D5"], fingers: [4] },
+              { tick: 8, dur: 2, notes: ["D4"], fingers: [1] },
+              { tick: 10, dur: 2, notes: ["F#4"], fingers: [2] },
+              { tick: 12, dur: 2, notes: ["A4"], fingers: [3] },
+              { tick: 14, dur: 2, notes: ["B4"], fingers: [4] }
+            ]
+      };
+    }
+
+    function mChromaticRise(level) {
+      return {
+        chord: "Subida Cromática → Coro", pedal: false,
+        tip: "Subida cromática marcante D4 → D#4 → E4 → F4 → F#4 → G4 → A4 → A#4 → B4 puxando o Coro!",
+        lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+        rh: level === "easy"
+          ? [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["G4", "B4", "D5"], fingers: [1, 2, 4] }]
+          : [
+              { tick: 0, dur: 2, notes: ["D4"], fingers: [1] },
+              { tick: 2, dur: 2, notes: ["D#4"], fingers: [2] },
+              { tick: 4, dur: 2, notes: ["E4"], fingers: [1] },
+              { tick: 6, dur: 2, notes: ["F4"], fingers: [2] },
+              { tick: 8, dur: 2, notes: ["F#4"], fingers: [3] },
+              { tick: 10, dur: 2, notes: ["G4"], fingers: [1] },
+              { tick: 12, dur: 2, notes: ["A4"], fingers: [2] },
+              { tick: 14, dur: 1, notes: ["A#4"], fingers: [3] },
+              { tick: 15, dur: 1, notes: ["B4"], fingers: [4] }
+            ]
+      };
+    }
+
+    function mCoroBar(level, variant) {
+      if (variant === 1) {
+        return {
+          chord: "D → Bm", pedal: true,
+          tip: "Coro ('Lá-rá-rá'): D (tempos 1–2) → Bm (tempos 3–4).",
+          lh: [{ tick: 0, dur: 8, notes: ["D2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["B2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] }]
+        };
+      }
+      if (variant === 2) {
+        return {
+          chord: "D → A → E", pedal: true,
+          tip: "Passagem de retorno do coro: D → A → E.",
+          lh: [{ tick: 0, dur: 8, notes: ["D2"], fingers: [5] }, { tick: 8, dur: 4, notes: ["A2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["E2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 4, notes: ["C#4", "E4", "A4"], fingers: [1, 2, 5] }, { tick: 12, dur: 4, notes: ["E4", "G#4", "B4"], fingers: [1, 2, 4] }]
+        };
+      }
+      return {
+        chord: "D → A → Bm", pedal: true,
+        tip: "Variação cheia do coro: D → A → Bm.",
+        lh: [{ tick: 0, dur: 8, notes: ["D2"], fingers: [5] }, { tick: 8, dur: 4, notes: ["A2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["B2"], fingers: [5] }],
+        rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }, { tick: 8, dur: 4, notes: ["C#4", "E4", "A4"], fingers: [1, 2, 5] }, { tick: 12, dur: 4, notes: ["D4", "F#4", "B4"], fingers: [1, 2, 5] }]
+      };
+    }
+
+    function mOutroBar(level, idx) {
+      if (idx === 0) {
+        return {
+          chord: "D (Tema Final)", pedal: true,
+          tip: "Instrumental encerrando: mantém a base firme em Ré com a melodia aguda descendo.",
+          lh: level === "easy" ? [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }] : [{ tick: 0, dur: 8, notes: ["D2", "D3"], fingers: [5, 1] }, { tick: 8, dur: 8, notes: ["A2", "D3"], fingers: [3, 1] }],
+          rh: [{ tick: 0, dur: 8, notes: ["F#4", "A4", "D5", "F#5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["F#4", "B4", "D5"], fingers: [1, 3, 5] }]
+        };
+      }
+      if (idx === 1) {
+        return {
+          chord: "D (Arpejo Agudo)", pedal: true,
+          tip: "Subida cristalina D5 → E5 → F#5 → G5 → A5 no agudo enquanto o baixo sustenta D2!",
+          lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+          rh: level === "easy"
+            ? [{ tick: 0, dur: 16, notes: ["F#4", "A4", "D5"], fingers: [1, 2, 4] }]
+            : [
+                { tick: 0, dur: 4, notes: ["F#4", "B4", "D5"], fingers: [1, 3, 5] },
+                { tick: 4, dur: 2, notes: ["D5"], fingers: [2] },
+                { tick: 6, dur: 2, notes: ["E5"], fingers: [3] },
+                { tick: 8, dur: 2, notes: ["F#5"], fingers: [4] },
+                { tick: 10, dur: 2, notes: ["G5"], fingers: [1] },
+                { tick: 12, dur: 4, notes: ["F#5", "A5"], fingers: [3, 5] }
+              ]
+        };
+      }
+      if (idx === 2) {
+        return {
+          chord: "D → A (Desacelera)", pedal: true,
+          tip: "Penúltimo compasso desacelerando em D (tempos 1–2) e A (tempos 3–4).",
+          lh: [{ tick: 0, dur: 8, notes: ["D2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 8, notes: ["D4", "F#4", "A4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["E4", "A4", "C#5", "E5"], fingers: [1, 2, 4, 5] }]
+        };
+      }
+      return {
+        chord: "D (Final)", pedal: true,
+        tip: "Acorde final de repouso em Ré Maior sustentado com pedal até o som desaparecer.",
+        lh: [{ tick: 0, dur: 16, notes: ["D2", "D3"], fingers: [5, 1] }],
+        rh: [{ tick: 0, dur: 16, notes: ["D4", "F#4", "A4", "D5"], fingers: [1, 2, 3, 5] }]
+      };
+    }
+
+    function connectLevels(baseEasy, midLayer, advLayer, faithfulOverride) {
+      const mergeHand = (parentArr, childArr) => {
+        if (!childArr || !childArr.length) return parentArr.map(x => ({ ...x }));
+        const childTicks = new Set(childArr.map(x => x.tick));
+        const kept = parentArr.filter(x => !childTicks.has(x.tick)).map(x => ({ ...x }));
+        return [...kept, ...childArr.map(x => ({ ...x }))].sort((a, b) => a.tick - b.tick);
+      };
+      const easy = { chord: baseEasy.chord, pedal: !!baseEasy.pedal, tip: baseEasy.tip, lh: baseEasy.lh.map(x => ({ ...x })), rh: baseEasy.rh.map(x => ({ ...x })) };
+      const medium = {
+        chord: midLayer.chord || easy.chord,
+        pedal: midLayer.pedal !== undefined ? midLayer.pedal : easy.pedal,
+        tip: midLayer.tip || easy.tip,
+        lh: mergeHand(easy.lh, midLayer.lh),
+        rh: mergeHand(easy.rh, midLayer.rh)
+      };
+      const original = {
+        chord: advLayer.chord || medium.chord,
+        pedal: advLayer.pedal !== undefined ? advLayer.pedal : medium.pedal,
+        tip: advLayer.tip || medium.tip,
+        lh: mergeHand(medium.lh, advLayer.lh),
+        rh: mergeHand(medium.rh, advLayer.rh)
+      };
+      const faithful = faithfulOverride ? {
+        chord: faithfulOverride.chord || medium.chord,
+        pedal: faithfulOverride.pedal !== undefined ? faithfulOverride.pedal : medium.pedal,
+        tip: faithfulOverride.tip || medium.tip,
+        lh: faithfulOverride.lh.map(x => ({ ...x })),
+        rh: faithfulOverride.rh.map(x => ({ ...x }))
+      } : {
+        chord: medium.chord,
+        pedal: medium.pedal,
+        tip: "Original Fiel: base limpa e natural aproveitando o groove sem excessos.",
+        lh: medium.lh.map(x => ({ ...x })),
+        rh: medium.rh.map(x => ({ ...x }))
+      };
+      return { easy, medium, original, faithful };
+    }
+
+    const TODO_NO_STEPS = [];
+    function buildFaithfulLevel(id, sectionId, levelBuilder) {
+      if (sectionId <= 7) return levelBuilder("medium");
+      if (sectionId >= 8 && sectionId <= 11) {
+        const orig = levelBuilder("original");
+        return {
+          chord: orig.chord,
+          pedal: orig.pedal,
+          tip: "Original Fiel: mão esquerda enxuta (nota única no baixo) + 3 notas na mão direita.",
+          lh: orig.lh.map(ev => ({ tick: ev.tick, dur: ev.dur, notes: [ev.notes[0]], fingers: [ev.fingers[0]] })),
+          rh: orig.rh.map(ev => ({ tick: ev.tick, dur: ev.dur, notes: ev.notes.slice(0, 3), fingers: ev.fingers.slice(0, 3) }))
+        };
+      }
+      if (id === 63) return mChromaticRise("medium");
+      if (id === 81) {
+        return {
+          chord: "D (Final)", pedal: true,
+          tip: "Original Fiel: encerra no mesmo Ré Maior do início (D2 na ME | D4–F#4–A4 na MD).",
+          lh: [{ tick: 0, dur: 16, notes: ["D2"], fingers: [5] }],
+          rh: [{ tick: 0, dur: 16, notes: ["D4", "F#4", "A4"], fingers: [1, 2, 4] }]
+        };
+      }
+      const isD6Bar = (id % 2 === 0);
+      return isD6Bar
+        ? mIntroD6("medium", id < 80, "Original Fiel (Lá-rá-rá): mesma base do início! D6 com mindinho (5) no B4 e ME alternando D2 → A2.")
+        : mIntroD("medium", "Original Fiel (Lá-rá-rá): mesma base do início! D (D4–F#4–A4) com passo cromático A#4.");
+    }
+
+    function addMeasure(sectionId, title, lyric, voice, levelBuilder) {
+      const id = TODO_NO_STEPS.length + 1;
+      const e = levelBuilder("easy");
+      const m = levelBuilder("medium");
+      const o = levelBuilder("original");
+      const f = buildFaithfulLevel(id, sectionId, levelBuilder);
+      TODO_NO_STEPS.push({
+        id,
+        tag: `Comp. ${id}`,
+        sectionId,
+        title,
+        lyric,
+        voice: voice || [],
+        levels: connectLevels(e, m, o, f)
+      });
+    }
+
+    // Melodias vocais alinhadas
+    const VOX_V1_A = [{ tick: 2, dur: 3, note: "F#4" }, { tick: 6, dur: 3, note: "F#4" }, { tick: 10, dur: 3, note: "A4" }, { tick: 13, dur: 3, note: "B4" }];
+    const VOX_V1_B = [{ tick: 0, dur: 3, note: "D5" }, { tick: 4, dur: 3, note: "B4" }, { tick: 8, dur: 4, note: "A4" }, { tick: 12, dur: 4, note: "F#4" }];
+    const VOX_V1_C = [{ tick: 0, dur: 3, note: "A4" }, { tick: 4, dur: 3, note: "B4" }, { tick: 8, dur: 8, note: "B4" }];
+    const VOX_V1_D = [{ tick: 0, dur: 12, note: "B4" }];
+    const VOX_PRE_1 = [{ tick: 0, dur: 3, note: "G4" }, { tick: 4, dur: 3, note: "A4" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "D5" }];
+    const VOX_PRE_2 = [{ tick: 0, dur: 3, note: "D5" }, { tick: 4, dur: 3, note: "E5" }, { tick: 8, dur: 4, note: "F#5" }, { tick: 12, dur: 4, note: "D5" }];
+    const VOX_PRE_3 = [{ tick: 0, dur: 3, note: "B4" }, { tick: 4, dur: 3, note: "D5" }, { tick: 8, dur: 8, note: "E5" }];
+    const VOX_REF_1 = [{ tick: 0, dur: 4, note: "F#5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 4, note: "E5" }, { tick: 12, dur: 4, note: "C5" }];
+    const VOX_REF_2 = [{ tick: 0, dur: 3, note: "C#5" }, { tick: 4, dur: 3, note: "D5" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "D5" }];
+    const VOX_REF_3 = [{ tick: 0, dur: 12, note: "A4" }];
+    const VOX_SOL = [{ tick: 0, dur: 3, note: "B4" }, { tick: 3, dur: 3, note: "D5" }, { tick: 6, dur: 2, note: "B4" }, { tick: 8, dur: 8, note: "A4" }];
+    const VOX_CORO = [{ tick: 0, dur: 3, note: "F#5" }, { tick: 3, dur: 3, note: "E5" }, { tick: 6, dur: 2, note: "D5" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "D5" }];
+
+    // POPULA OS 81 COMPASSOS DE TODO NÓ
+    // Sec 1: Intro (Comp 1-4)
+    addMeasure(1, "Introdução (1/4) — D", "Abertura instrumental (0:00)", [], l => mIntroD(l));
+    addMeasure(1, "Introdução (2/4) — D6", "Mindinho no B4", [], l => mIntroD6(l, true));
+    addMeasure(1, "Introdução (3/4) — D", "Retorno ao D", [], l => mIntroD(l));
+    addMeasure(1, "Introdução (4/4) — D6", "Prepara entrada da voz", [], l => mIntroD6(l, false));
+
+    // Sec 2: Verso 1 (Comp 5-8)
+    addMeasure(2, "Verso 1 — D", "\"Tanto faz, é sorrindo...\" (0:14)", VOX_V1_A, l => mIntroD(l));
+    addMeasure(2, "Verso 1 — D6", "\"...que se desfaz...\"", VOX_V1_B, l => mIntroD6(l, true));
+    addMeasure(2, "Verso 1 — D", "\"...todo o nó da garganta...\"", VOX_V1_C, l => mIntroD(l));
+    addMeasure(2, "Verso 1 — E7", "\"...garganta...\" (Descanso)", VOX_V1_D, l => mVerseRestE7(l));
+
+    // Sec 3: Verso 2 (Comp 9-12)
+    addMeasure(3, "Verso 2 — D", "\"Afinal, sente gosto ruim...\" (0:27)", VOX_V1_A, l => mIntroD(l));
+    addMeasure(3, "Verso 2 — D6", "\"...de metal...\"", VOX_V1_B, l => mIntroD6(l, true));
+    addMeasure(3, "Verso 2 — D", "\"...quando aperta a gravata...\"", VOX_V1_C, l => mIntroD(l));
+    addMeasure(3, "Verso 2 — E7", "\"...gravata...\" (Descanso)", VOX_V1_D, l => mVerseRestE7(l));
+
+    // Sec 4: Pré-Refrão 1 (Comp 13-20)
+    addMeasure(4, "Pré-Refrão 1 — Em7", "\"E sabe que no fim do mês...\" (0:40)", VOX_PRE_1, l => mPreChorus(l, 1));
+    addMeasure(4, "Pré-Refrão 1 — D/F#", "\"...desesperado ao jeito inglês...\"", VOX_PRE_2, l => mPreChorus(l, 2));
+    addMeasure(4, "Pré-Refrão 1 — G → A", "\"...num mar de aspirina...\" (1ª)", VOX_PRE_3, l => mPreChorus(l, 3));
+    addMeasure(4, "Pré-Refrão 1 — G → Gm → A", "\"...num mar de aspirina...\" (2ª)", VOX_PRE_3, l => mPreChorus(l, 4));
+    addMeasure(4, "Pré-Refrão 1 — Em7", "\"E sabe que no fim do mês...\" (Rep)", VOX_PRE_1, l => mPreChorus(l, 1));
+    addMeasure(4, "Pré-Refrão 1 — D/F#", "\"...ao jeito inglês...\"", VOX_PRE_2, l => mPreChorus(l, 2));
+    addMeasure(4, "Pré-Refrão 1 — G → A", "\"...num mar de aspirina...\"", VOX_PRE_3, l => mPreChorus(l, 3));
+    addMeasure(4, "Pré-Refrão 1 — A (Respiração)", "Prepara o Refrão", [], l => mPreChorus(l, 4));
+
+    // Sec 5: Refrão 1 (Comp 21-24)
+    addMeasure(5, "Refrão 1 — D → C/D", "\"Alegria, a mão...\" (1:05)", VOX_REF_1, l => mChorusBar(l, 1));
+    addMeasure(5, "Refrão 1 — F#m → G", "\"...que te tira o sono...\"", VOX_REF_2, l => mChorusBar(l, 2));
+    addMeasure(5, "Refrão 1 — D", "\"...devagar...\"", VOX_REF_3, l => mChorusBar(l, 3));
+    addMeasure(5, "Refrão 1 — G → D", "\"...e deixa o sol para secar\"", VOX_SOL, l => mChorusBar(l, 4));
+
+    // Sec 6: Deixa o sol 1 (Comp 25-29)
+    addMeasure(6, "Deixa o Sol (1/3) — G → D", "\"E deixa o sol para secar\" (1ª)", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(6, "Deixa o Sol (2/3) — G → D", "\"E deixa o sol para secar\" (2ª)", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(6, "Deixa o Sol (3/3) — G → D", "\"E deixa o sol para secar\" (3ª)", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(6, "Pós-Refrão — D", "Sustenta resolução", [], l => mIntroD(l));
+    addMeasure(6, "Pós-Refrão — D6", "Chamada pro retorno", [], l => mIntroD6(l, true));
+
+    // Sec 7: Retorno (Comp 30-33)
+    addMeasure(7, "Retorno (1/4) — D", "Interlúdio (1:36)", [], l => mIntroD(l));
+    addMeasure(7, "Retorno (2/4) — D6", "Interlúdio", [], l => mIntroD6(l, true));
+    addMeasure(7, "Retorno (3/4) — D", "Interlúdio", [], l => mIntroD(l));
+    addMeasure(7, "Retorno (4/4) — D6 (Breque)", "Breque antes da banda", [], l => mIntroD6(l, false));
+
+    // Sec 8: Verso 3 Banda (Comp 34-37)
+    addMeasure(8, "Verso 3 — D", "\"Tanto faz, é sorrindo...\" (1:48)", VOX_V1_A, l => mIntroD(l));
+    addMeasure(8, "Verso 3 — D6", "\"...que se desfaz...\"", VOX_V1_B, l => mIntroD6(l, true));
+    addMeasure(8, "Verso 3 — D", "\"...todo o nó da garganta...\"", VOX_V1_C, l => mIntroD(l));
+    addMeasure(8, "Verso 3 — E7", "\"...garganta...\"", VOX_V1_D, l => mVerseRestE7(l));
+
+    // Sec 9: Verso 4 Banda (Comp 38-41)
+    addMeasure(9, "Verso 4 — D", "\"Afinal, sente gosto ruim...\" (2:01)", VOX_V1_A, l => mIntroD(l));
+    addMeasure(9, "Verso 4 — D6", "\"...de metal...\"", VOX_V1_B, l => mIntroD6(l, true));
+    addMeasure(9, "Verso 4 — D", "\"...quando aperta a gravata...\"", VOX_V1_C, l => mIntroD(l));
+    addMeasure(9, "Verso 4 — E7", "\"...gravata...\"", VOX_V1_D, l => mVerseRestE7(l));
+
+    // Sec 10: Pré-Refrão 2 (Comp 42-49)
+    addMeasure(10, "Pré-Refrão 2 — Em7", "\"E sabe que no fim do mês...\" (2:14)", VOX_PRE_1, l => mPreChorus(l, 1));
+    addMeasure(10, "Pré-Refrão 2 — D/F#", "\"...desesperado ao jeito inglês...\"", VOX_PRE_2, l => mPreChorus(l, 2));
+    addMeasure(10, "Pré-Refrão 2 — G → A", "\"...num mar de aspirina...\" (1ª)", VOX_PRE_3, l => mPreChorus(l, 3));
+    addMeasure(10, "Pré-Refrão 2 — G → Gm → A", "\"...num mar de aspirina...\" (2ª)", VOX_PRE_3, l => mPreChorus(l, 4));
+    addMeasure(10, "Pré-Refrão 2 — G → A", "\"...num mar de aspirina!\" (3ª)", VOX_PRE_3, l => mPreChorus(l, 3));
+    addMeasure(10, "Pré-Refrão 2 — Em7", "Crescendo instrumental", VOX_PRE_1, l => mPreChorus(l, 1));
+    addMeasure(10, "Pré-Refrão 2 — D/F#", "Crescendo instrumental", VOX_PRE_2, l => mPreChorus(l, 2));
+    addMeasure(10, "Pré-Refrão 2 — A", "Chamada forte pro Refrão 2", [], l => mPreChorus(l, 4));
+
+    // Sec 11: Refrão 2 (2 voltas = Comp 50-61)
+    addMeasure(11, "Refrão 2 (1/2) — D → C/D", "\"Alegria, a mão...\" (2:39)", VOX_REF_1, l => mChorusBar(l, 1));
+    addMeasure(11, "Refrão 2 (1/2) — F#m → G", "\"...que te tira o sono...\"", VOX_REF_2, l => mChorusBar(l, 2));
+    addMeasure(11, "Refrão 2 (1/2) — D", "\"...devagar...\"", VOX_REF_3, l => mChorusBar(l, 3));
+    addMeasure(11, "Refrão 2 (1/2) — G → D", "\"...e deixa o sol para secar\"", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(11, "Refrão 2 (1/2) — G → D", "\"E deixa o sol para secar\" (Rep)", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(11, "Refrão 2 (2/2) — D → C/D", "\"Alegria, a mão...\" (2ª volta)", VOX_REF_1, l => mChorusBar(l, 1));
+    addMeasure(11, "Refrão 2 (2/2) — F#m → G", "\"...que te tira o sono...\"", VOX_REF_2, l => mChorusBar(l, 2));
+    addMeasure(11, "Refrão 2 (2/2) — D", "\"...devagar...\"", VOX_REF_3, l => mChorusBar(l, 3));
+    addMeasure(11, "Refrão 2 (2/2) — G → D", "\"...e deixa o sol para secar\"", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(11, "Refrão 2 (2/2) — G → D", "\"E deixa o sol para secar\" (Rep)", VOX_SOL, l => mChorusBar(l, 4));
+    addMeasure(11, "Pós-Refrão 2 — D", "Prepara o breque final", [], l => mIntroD(l));
+    addMeasure(11, "Breque — D (4 batidas)", "Breque antes do Coro (3:18)", [], l => mIntroD(l));
+
+    // Sec 12: Subida Cromática + Coro Lá-rá-rá + Final (Comp 62-81)
+    addMeasure(12, "Subida Cromática!", "\"Tã-rã-nã-nã-nã-nã!\" (3:21)", [], l => mChromaticRise(l));
+    addMeasure(12, "Coro (1/3) — D → Bm", "\"Lá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 1));
+    addMeasure(12, "Coro (1/3) — D → A → E", "\"...lá-rá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 2));
+    addMeasure(12, "Coro (1/3) — D → Bm", "\"...lá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 1));
+    addMeasure(12, "Coro (1/3) — D → A → Bm", "\"...lá-rá-rá-rá-lá!\"", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (2/3) — D → A → Bm", "\"Lá-rá-rá...\" (2ª volta)", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (2/3) — D → A → Bm", "\"...lá-rá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (2/3) — D → Bm", "\"...lá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 1));
+    addMeasure(12, "Coro (2/3) — D → A → E", "\"...lá-rá-rá-rá-lá!\"", VOX_CORO, l => mCoroBar(l, 2));
+    addMeasure(12, "Coro (3/3) — D → A → Bm", "\"Lá-rá-rá...\" (3ª volta)", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (3/3) — D → A → Bm", "\"...lá-rá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (3/3) — D → A → Bm", "\"...lá-rá-rá...\"", VOX_CORO, l => mCoroBar(l, 3));
+    addMeasure(12, "Coro (3/3) — D → A → E", "\"...lá-rá-rá-rá-lá!\"", VOX_CORO, l => mCoroBar(l, 2));
+    addMeasure(12, "Outro — D (Tema Final 1)", "(Instrumental encerrando)", [], l => mOutroBar(l, 0));
+    addMeasure(12, "Outro — D (Tema Final 2)", "(Instrumental encerrando)", [], l => mOutroBar(l, 0));
+    addMeasure(12, "Outro — D (Subida Aguda 1)", "(Arpejo cristalino final)", [], l => mOutroBar(l, 1));
+    addMeasure(12, "Outro — D (Subida Aguda 2)", "(Brilho no A5)", [], l => mOutroBar(l, 1));
+    addMeasure(12, "Outro — D → A", "(Desacelerando...)", [], l => mOutroBar(l, 2));
+    addMeasure(12, "Final — D (Repouso)", "Acorde final de Todo Nó (4:22)", [], l => mOutroBar(l, 3));
+
+    /* ==========================================================================
+       2B. 5 MÚSICAS ADICIONAIS COM NÍVEIS CONECTADOS
+       ========================================================================== */
+    function makeSongPack(meta, sections, rawMeasures) {
+      const steps = rawMeasures.map((m, idx) => ({
+        id: idx + 1,
+        tag: `Comp. ${idx + 1}`,
+        sectionId: m.sectionId,
+        title: m.title,
+        lyric: m.lyric,
+        voice: m.voice || [],
+        levels: connectLevels(m.easy, m.medium, m.original, m.faithful)
+      }));
+      return { meta, sections, steps };
+    }
+
+    const SONGS = {
+      "todo-no": {
+        meta: { title: "Todo Nó — Dingo Bells", info: "Tom: D • 76 BPM • 4/4", defaultBpm: 76, presets: [56, 66, 76] },
+        sections: TODO_NO_SECTIONS,
+        steps: TODO_NO_STEPS
+      },
+      "alabama-song": makeSongPack(
+        { title: "Alabama Song (Whisky Bar) — The Doors", info: "Tom: Am / F • 90 BPM • 4/4", defaultBpm: 90, presets: [68, 80, 90] },
+        [
+          { id: 1, name: "1. Intro" },
+          { id: 2, name: "2. Verso 1 (Whisky Bar)" },
+          { id: 3, name: "3. Riff Descendente" },
+          { id: 4, name: "4. Refrão 1" },
+          { id: 5, name: "5. Refrão 2" },
+          { id: 6, name: "6. Interlúdio & Verso 2" },
+          { id: 7, name: "7. Riff & Solo Órgão" },
+          { id: 8, name: "8. Refrão Final" }
+        ],
+        (() => {
+          // Helper para marcha cabaret "oom-pah" (baixo nos tempos 1 e 3, acordes firmes)
+          const oomPah = (sec, title, lyric, chord, b1, b2, rhNotes, rhFing, voice, pedal = false, tipExtra = "") => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: {
+              chord, pedal,
+              tip: `Nível 1: base limpa — ME marca ${b1} e ${b2}; MD segura ${chord} nos tempos 1 e 3.${tipExtra}`,
+              lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }],
+              rh: [{ tick: 0, dur: 8, notes: rhNotes, fingers: rhFing }, { tick: 8, dur: 8, notes: rhNotes, fingers: rhFing }]
+            },
+            medium: {
+              chord, pedal,
+              tip: `Nível 2: marcha cabaret (oom-pah) — ME alterna ${b1} → ${b2} nos 4 tempos; MD responde nos contratempos.`,
+              lh: [
+                { tick: 0, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 4, dur: 4, notes: [b2], fingers: [2] },
+                { tick: 8, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 12, dur: 4, notes: [b2], fingers: [2] }
+              ],
+              rh: [
+                { tick: 0, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 4, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 8, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 12, dur: 4, notes: rhNotes, fingers: rhFing }
+              ]
+            },
+            original: {
+              chord, pedal,
+              tip: `Nível 3: levada completa estilo Ray Manzarek (cravo/órgão) com marcação cheia.`,
+              lh: [
+                { tick: 0, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 4, dur: 4, notes: [b2], fingers: [2] },
+                { tick: 8, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 12, dur: 4, notes: [b2], fingers: [2] }
+              ],
+              rh: [0, 2, 4, 6, 8, 10, 12, 14].map(t => ({ tick: t, dur: 2, notes: rhNotes, fingers: rhFing }))
+            },
+            faithful: {
+              chord, pedal,
+              tip: `Original Fiel: marcha cabaret exata da gravação — ME alterna ${b1} → ${b2}; MD marca nos tempos 2 e 4 (oom-pah).`,
+              lh: [
+                { tick: 0, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 4, dur: 4, notes: [b2], fingers: [2] },
+                { tick: 8, dur: 4, notes: [b1], fingers: [5] },
+                { tick: 12, dur: 4, notes: [b2], fingers: [2] }
+              ],
+              rh: [
+                { tick: 0, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 4, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 8, dur: 4, notes: rhNotes, fingers: rhFing },
+                { tick: 12, dur: 4, notes: rhNotes, fingers: rhFing }
+              ]
+            }
+          });
+
+          // Helper para compasso dividido em 2 acordes (ex: F#m -> D7, B -> B7, G -> G7, C -> C7)
+          const splitBar = (sec, title, lyric, chord, b1, b2, r1, f1, r2, f2, voice, pedal = false) => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: {
+              chord, pedal,
+              tip: `Nível 1: troca na metade do compasso (${chord}) nos tempos 1 e 3.`,
+              lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }],
+              rh: [{ tick: 0, dur: 8, notes: r1, fingers: f1 }, { tick: 8, dur: 8, notes: r2, fingers: f2 }]
+            },
+            medium: {
+              chord, pedal,
+              tip: `Nível 2: marcha cabaret mantendo a troca exata de ${chord}.`,
+              lh: [{ tick: 0, dur: 4, notes: [b1], fingers: [5] }, { tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 8, dur: 4, notes: [b2], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }],
+              rh: [{ tick: 0, dur: 4, notes: r1, fingers: f1 }, { tick: 4, dur: 4, notes: r1, fingers: f1 }, { tick: 8, dur: 4, notes: r2, fingers: f2 }, { tick: 12, dur: 4, notes: r2, fingers: f2 }]
+            },
+            original: {
+              chord, pedal,
+              tip: `Nível 3: ataques em colcheias com a pulsação original.`,
+              lh: [{ tick: 0, dur: 4, notes: [b1], fingers: [5] }, { tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 8, dur: 4, notes: [b2], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }],
+              rh: [0, 2, 4, 6].map(t => ({ tick: t, dur: 2, notes: r1, fingers: f1 })).concat([8, 10, 12, 14].map(t => ({ tick: t, dur: 2, notes: r2, fingers: f2 })))
+            },
+            faithful: {
+              chord, pedal,
+              tip: `Original Fiel: troca limpa de ${chord} com a marcha original.`,
+              lh: [{ tick: 0, dur: 4, notes: [b1], fingers: [5] }, { tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 8, dur: 4, notes: [b2], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }],
+              rh: [{ tick: 0, dur: 4, notes: r1, fingers: f1 }, { tick: 4, dur: 4, notes: r1, fingers: f1 }, { tick: 8, dur: 4, notes: r2, fingers: f2 }, { tick: 12, dur: 4, notes: r2, fingers: f2 }]
+            }
+          });
+
+          // Riff descendente icônico do órgão/marxofone antes de cada refrão: C -> Cmaj7 | C7 -> C6
+          const riffBar1 = (sec) => ({
+            sectionId: sec, title: "Riff Descendente (1/2) — C → Cmaj7", lyric: "Passagem icônica do órgão: C5 → B4 (3 ataques cada)", voice: [],
+            easy: {
+              chord: "C → Cmaj7", pedal: false,
+              tip: "Nível 1: C (tempos 1–2) desce o polegar para B4 (Cmaj7 nos tempos 3–4).",
+              lh: [{ tick: 0, dur: 8, notes: ["C3"], fingers: [5] }, { tick: 8, dur: 8, notes: ["B2"], fingers: [4] }],
+              rh: [{ tick: 0, dur: 8, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["E4", "G4", "B4"], fingers: [1, 2, 4] }]
+            },
+            medium: {
+              chord: "C → Cmaj7 (Riff)", pedal: false,
+              tip: "Nível 2: 3 ataques curtos em C e 3 ataques curtos em Cmaj7 (tã-tã-tã | tã-tã-tã).",
+              lh: [{ tick: 0, dur: 6, notes: ["C3"], fingers: [5] }, { tick: 8, dur: 6, notes: ["B2"], fingers: [4] }],
+              rh: [
+                { tick: 0, dur: 2, notes: ["G4", "C5"], fingers: [2, 5] },
+                { tick: 2, dur: 2, notes: ["G4", "C5"], fingers: [2, 5] },
+                { tick: 4, dur: 2, notes: ["G4", "C5"], fingers: [2, 5] },
+                { tick: 8, dur: 2, notes: ["G4", "B4", "C5"], fingers: [1, 3, 5] },
+                { tick: 10, dur: 2, notes: ["G4", "B4", "C5"], fingers: [1, 3, 5] },
+                { tick: 12, dur: 2, notes: ["G4", "B4", "C5"], fingers: [1, 3, 5] }
+              ]
+            },
+            original: {
+              chord: "C → Cmaj7 (Riff)", pedal: false,
+              tip: "Nível 3: riff exato com baixo descendente sincronizado em cada ataque.",
+              lh: [0, 2, 4].map(t => ({ tick: t, dur: 2, notes: ["C3"], fingers: [5] })).concat([8, 10, 12].map(t => ({ tick: t, dur: 2, notes: ["B2"], fingers: [4] }))),
+              rh: [
+                { tick: 0, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 2, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 4, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 8, dur: 2, notes: ["E4", "G4", "B4", "C5"], fingers: [1, 2, 4, 5] },
+                { tick: 10, dur: 2, notes: ["E4", "G4", "B4", "C5"], fingers: [1, 2, 4, 5] },
+                { tick: 12, dur: 2, notes: ["E4", "G4", "B4", "C5"], fingers: [1, 2, 4, 5] }
+              ]
+            },
+            faithful: {
+              chord: "C → Cmaj7 (Riff)", pedal: false,
+              tip: "Original Fiel: 3 ataques curtos em C e 3 em Cmaj7 mantendo C5 no topo!",
+              lh: [{ tick: 0, dur: 6, notes: ["C3"], fingers: [5] }, { tick: 8, dur: 6, notes: ["B2"], fingers: [4] }],
+              rh: [
+                { tick: 0, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 2, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 4, dur: 2, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] },
+                { tick: 8, dur: 2, notes: ["E4", "B4", "C5"], fingers: [1, 4, 5] },
+                { tick: 10, dur: 2, notes: ["E4", "B4", "C5"], fingers: [1, 4, 5] },
+                { tick: 12, dur: 2, notes: ["E4", "B4", "C5"], fingers: [1, 4, 5] }
+              ]
+            }
+          });
+
+          const riffBar2 = (sec) => ({
+            sectionId: sec, title: "Riff Descendente (2/2) — C7 → C6", lyric: "Continua descendo: Bb4 → A4 chamando o Refrão em F!", voice: [],
+            easy: {
+              chord: "C7 → C6", pedal: false,
+              tip: "Nível 1: C7 (Bb4) desce para C6 (A4) resolvendo no Refrão em Fá Maior.",
+              lh: [{ tick: 0, dur: 8, notes: ["A#2"], fingers: [3] }, { tick: 8, dur: 8, notes: ["A2"], fingers: [2] }],
+              rh: [{ tick: 0, dur: 8, notes: ["E4", "G4", "A#4"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["E4", "G4", "A4"], fingers: [1, 2, 3] }]
+            },
+            medium: {
+              chord: "C7 → C6 (Riff)", pedal: false,
+              tip: "Nível 2: 3 ataques curtos em C7 (Bb4) e 3 em C6 (A4) caindo direto em F!",
+              lh: [{ tick: 0, dur: 6, notes: ["A#2"], fingers: [3] }, { tick: 8, dur: 6, notes: ["A2"], fingers: [2] }],
+              rh: [
+                { tick: 0, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 2, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 4, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 8, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] },
+                { tick: 10, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] },
+                { tick: 12, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] }
+              ]
+            },
+            original: {
+              chord: "C7 → C6 (Riff)", pedal: false,
+              tip: "Nível 3: riff completo sincronizado com a descida cromática Bb2 → A2 no baixo.",
+              lh: [0, 2, 4].map(t => ({ tick: t, dur: 2, notes: ["A#2"], fingers: [3] })).concat([8, 10, 12].map(t => ({ tick: t, dur: 2, notes: ["A2"], fingers: [2] }))),
+              rh: [
+                { tick: 0, dur: 2, notes: ["E4", "G4", "A#4", "C5"], fingers: [1, 2, 4, 5] },
+                { tick: 2, dur: 2, notes: ["E4", "G4", "A#4", "C5"], fingers: [1, 2, 4, 5] },
+                { tick: 4, dur: 2, notes: ["E4", "G4", "A#4", "C5"], fingers: [1, 2, 4, 5] },
+                { tick: 8, dur: 2, notes: ["E4", "G4", "A4", "C5"], fingers: [1, 2, 3, 5] },
+                { tick: 10, dur: 2, notes: ["E4", "G4", "A4", "C5"], fingers: [1, 2, 3, 5] },
+                { tick: 12, dur: 2, notes: ["E4", "G4", "A4", "C5"], fingers: [1, 2, 3, 5] }
+              ]
+            },
+            faithful: {
+              chord: "C7 → C6 (Riff)", pedal: false,
+              tip: "Original Fiel: 3 ataques em C7 (Bb4) e 3 em C6 (A4) preparando a entrada de 'Oh, moon of Alabama!'",
+              lh: [{ tick: 0, dur: 6, notes: ["A#2"], fingers: [3] }, { tick: 8, dur: 6, notes: ["A2"], fingers: [2] }],
+              rh: [
+                { tick: 0, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 2, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 4, dur: 2, notes: ["G4", "A#4", "C5"], fingers: [1, 3, 5] },
+                { tick: 8, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] },
+                { tick: 10, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] },
+                { tick: 12, dur: 2, notes: ["G4", "A4", "C5"], fingers: [1, 2, 5] }
+              ]
+            }
+          });
+
+          // Melodias vocais fiéis
+          const V_SHOW1 = [{ tick: 0, dur: 2, note: "E4" }, { tick: 2, dur: 2, note: "A4" }, { tick: 4, dur: 2, note: "A4" }, { tick: 6, dur: 2, note: "A4" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "C5" }];
+          const V_SHOW2 = [{ tick: 0, dur: 2, note: "B4" }, { tick: 2, dur: 2, note: "A4" }, { tick: 4, dur: 4, note: "G4" }, { tick: 8, dur: 8, note: "A4" }];
+          const V_DONT = [{ tick: 0, dur: 4, note: "C#5" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 4, note: "F#4" }, { tick: 12, dur: 4, note: "A4" }];
+          const V_TELL1 = [{ tick: 0, dur: 2, note: "A4" }, { tick: 2, dur: 2, note: "C#5" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 2, note: "A4" }, { tick: 10, dur: 2, note: "C#5" }, { tick: 12, dur: 4, note: "A4" }];
+          const V_TELL2 = [{ tick: 0, dur: 2, note: "A4" }, { tick: 2, dur: 2, note: "C#5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 8, note: "E5" }];
+
+          const V_MOON1 = [{ tick: 0, dur: 4, note: "A4" }, { tick: 4, dur: 4, note: "C5" }, { tick: 8, dur: 4, note: "C5" }, { tick: 12, dur: 4, note: "C5" }];
+          const V_MOON2 = [{ tick: 0, dur: 4, note: "D5" }, { tick: 4, dur: 4, note: "C5" }, { tick: 8, dur: 8, note: "A4" }];
+          const V_BYE_B1 = [{ tick: 0, dur: 4, note: "F#4" }, { tick: 4, dur: 4, note: "B4" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "B4" }];
+          const V_BYE_B2 = [{ tick: 0, dur: 4, note: "C#5" }, { tick: 4, dur: 4, note: "B4" }, { tick: 8, dur: 8, note: "A4" }];
+          const V_BYE_E1 = [{ tick: 0, dur: 4, note: "G#4" }, { tick: 4, dur: 4, note: "B4" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "B4" }];
+          const V_BYE_E2 = [{ tick: 0, dur: 4, note: "D5" }, { tick: 4, dur: 4, note: "B4" }, { tick: 8, dur: 8, note: "G#4" }];
+          const V_MAMA_G1 = [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "B4" }, { tick: 8, dur: 4, note: "B4" }, { tick: 12, dur: 4, note: "B4" }];
+          const V_MAMA_G2 = [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "A#4" }, { tick: 8, dur: 8, note: "G4" }];
+          const V_MAMA_EB1 = [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "A#4" }, { tick: 8, dur: 4, note: "A#4" }, { tick: 12, dur: 4, note: "A#4" }];
+          const V_MAMA_EB2 = [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 8, note: "F4" }];
+          const V_WHISKY = [{ tick: 0, dur: 3, note: "G4" }, { tick: 3, dur: 3, note: "A4" }, { tick: 6, dur: 2, note: "A#4" }, { tick: 8, dur: 4, note: "C5" }, { tick: 12, dur: 4, note: "D5" }];
+          const V_WHY = [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 8, note: "F4" }];
+
+          // Construtor de Verso completo (14 compassos)
+          const buildVerse = (sec, label, targetText) => [
+            oomPah(sec, `${label} — Am`, `"Well, show me the way..."`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW1),
+            oomPah(sec, `${label} — Am`, `"...to the next ${targetText}"`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW2),
+            splitBar(sec, `${label} — F#m → D7`, `"Oh, don't ask why"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            splitBar(sec, `${label} — F#m → D7`, `"Oh, don't ask why"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            oomPah(sec, `${label} — Am`, `"Show me the way..."`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW1),
+            oomPah(sec, `${label} — Am`, `"...to the next ${targetText}"`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW2),
+            splitBar(sec, `${label} — F#m → D7`, `"Oh, don't ask why"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            splitBar(sec, `${label} — F#m → D7`, `"Oh, don't ask why"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            oomPah(sec, `${label} — Am`, `"For if we don't find..."`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW1),
+            oomPah(sec, `${label} — Am`, `"...the next ${targetText}"`, "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5], V_SHOW2),
+            splitBar(sec, `${label} — F#m → D7`, `"I tell you we must die"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            splitBar(sec, `${label} — F#m → D7`, `"I tell you we must die"`, "F#m → D7", "F#2", "D2", ["F#4", "A4", "C#5"], [1, 2, 4], ["F#4", "A4", "C5"], [1, 2, 4], V_DONT),
+            oomPah(sec, `${label} — F#m`, `"I tell you, I tell you..."`, "F#m", "F#2", "C#3", ["F#4", "A4", "C#5"], [1, 2, 4], V_TELL1),
+            splitBar(sec, `${label} — D → C7`, `"...I tell you we must die!"`, "D → C7", "D2", "C3", ["F#4", "A4", "D5"], [1, 2, 5], ["E4", "A#4", "C5"], [1, 4, 5], V_TELL2)
+          ];
+
+          // Construtor do Refrão 1 (F -> B/B7 -> G/G7 -> Gm -> C/C7 -> F)
+          const buildChorus1 = (sec, prefix, withVoice) => [
+            oomPah(sec, `${prefix} — F (1/2)`, withVoice ? `"Oh, moon of Alabama"` : "Solo de Órgão sobre F", "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], withVoice ? V_MOON1 : [], true),
+            oomPah(sec, `${prefix} — F (2/2)`, withVoice ? `"Oh, moon of Alabama..."` : "Solo de Órgão sobre F", "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], withVoice ? V_MOON2 : [], true),
+            oomPah(sec, `${prefix} — B`, withVoice ? `"We now must say..."` : "Solo de Órgão sobre B", "B", "B2", "F#2", ["F#4", "B4", "D#5"], [1, 3, 5], withVoice ? V_BYE_B1 : [], true),
+            oomPah(sec, `${prefix} — B7`, withVoice ? `"...say goodbye"` : "Solo de Órgão sobre B7", "B7", "B2", "F#2", ["F#4", "A4", "D#5"], [1, 2, 5], withVoice ? V_BYE_B2 : [], true),
+            splitBar(sec, `${prefix} — G → G7`, withVoice ? `"We've lost our good old..."` : "Solo de Órgão sobre G → G7", "G → G7", "G2", "G2", ["G4", "B4", "D5"], [1, 3, 5], ["F4", "B4", "D5"], [1, 3, 5], withVoice ? V_MAMA_G1 : [], true),
+            oomPah(sec, `${prefix} — Gm`, withVoice ? `"...old mama"` : "Solo de Órgão sobre Gm", "Gm", "G2", "D3", ["G4", "A#4", "D5"], [1, 2, 5], withVoice ? V_MAMA_G2 : [], true),
+            splitBar(sec, `${prefix} — C → C7`, withVoice ? `"And must have whisky..."` : "Solo de Órgão sobre C → C7", "C → C7", "C3", "C3", ["E4", "G4", "C5"], [1, 2, 5], ["E4", "A#4", "C5"], [1, 4, 5], withVoice ? V_WHISKY : [], true),
+            oomPah(sec, `${prefix} — F`, withVoice ? `"...oh, you know why"` : "Solo de Órgão resolve em F", "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], withVoice ? V_WHY : [], true)
+          ];
+
+          // Construtor do Refrão 2 (F -> E/E7 -> Eb -> F -> C/C7 -> F)
+          const buildChorus2 = (sec, prefix) => [
+            oomPah(sec, `${prefix} — F (1/2)`, `"Oh, moon of Alabama"`, "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], V_MOON1, true),
+            oomPah(sec, `${prefix} — F (2/2)`, `"Oh, moon of Alabama..."`, "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], V_MOON2, true),
+            oomPah(sec, `${prefix} — E`, `"We now must say..."`, "E", "E2", "B2", ["E4", "G#4", "B4"], [1, 2, 4], V_BYE_E1, true),
+            oomPah(sec, `${prefix} — E7`, `"...say goodbye"`, "E7", "E2", "B2", ["E4", "G#4", "D5"], [1, 2, 5], V_BYE_E2, true),
+            oomPah(sec, `${prefix} — Eb`, `"We've lost our good old..."`, "Eb", "D#2", "A#2", ["G4", "A#4", "D#5"], [1, 2, 5], V_MAMA_EB1, true),
+            oomPah(sec, `${prefix} — F`, `"...old mama"`, "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], V_MAMA_EB2, true),
+            splitBar(sec, `${prefix} — C → C7`, `"And must have whisky..."`, "C → C7", "C3", "C3", ["E4", "G4", "C5"], [1, 2, 5], ["E4", "A#4", "C5"], [1, 4, 5], V_WHISKY, true),
+            oomPah(sec, `${prefix} — F`, `"...oh, you know why! Yeah!"`, "F", "F2", "C3", ["F4", "A4", "C5"], [1, 2, 4], V_WHY, true)
+          ];
+
+          return [
+            // 1. Intro (4 compassos)
+            oomPah(1, "Intro (1/4) — Am", "Abertura cabaret (0:00)", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            oomPah(1, "Intro (2/4) — Am", "Marcha firme em Lá Menor", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            oomPah(1, "Intro (3/4) — Am", "Mantém o pulso constante", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            oomPah(1, "Intro (4/4) — Am", "Prepara a entrada da voz", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            // 2. Verso 1 (14 compassos)
+            ...buildVerse(2, "Verso 1", "whisky bar"),
+            // 3. Riff Descendente (2 compassos)
+            riffBar1(3),
+            riffBar2(3),
+            // 4. Refrão 1 (8 compassos)
+            ...buildChorus1(4, "Refrão 1", true),
+            // 5. Refrão 2 (8 compassos)
+            ...buildChorus2(5, "Refrão 2"),
+            // 6. Interlúdio (2 compassos) + Verso 2 (14 compassos)
+            oomPah(6, "Interlúdio (1/2) — Am", "Retorno ao tema em Lá Menor", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            oomPah(6, "Interlúdio (2/2) — Am", "Prepara o Verso 2", "Am", "A2", "E2", ["A4", "C5", "E5"], [1, 2, 5]),
+            ...buildVerse(6, "Verso 2", "little girl"),
+            // 7. Riff Descendente (2 compassos) + Solo Instrumental (8 compassos)
+            riffBar1(7),
+            riffBar2(7),
+            ...buildChorus1(7, "Solo Órgão", false),
+            // 8. Refrão Final (8 compassos) + Acorde Final (1 compasso)
+            ...buildChorus2(8, "Refrão Final"),
+            {
+              sectionId: 8, title: "Final — F (Ataque Seco)", lyric: "Encerramento marcante em Fá Maior!", voice: [],
+              easy: { chord: "F (Final)", pedal: false, tip: "Ataque final firme em Fá Maior.", lh: [{ tick: 0, dur: 16, notes: ["F2"], fingers: [5] }], rh: [{ tick: 0, dur: 16, notes: ["F4", "A4", "C5"], fingers: [1, 2, 4] }] },
+              medium: { chord: "F (Final)", pedal: false, tip: "Dois ataques finais em F.", lh: [{ tick: 0, dur: 4, notes: ["F2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["F2"], fingers: [5] }], rh: [{ tick: 0, dur: 4, notes: ["F4", "A4", "C5"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["F4", "A4", "C5"], fingers: [1, 2, 4] }] },
+              original: { chord: "F (Final)", pedal: false, tip: "Oitava no baixo + ataques secos finais.", lh: [{ tick: 0, dur: 4, notes: ["F2", "F3"], fingers: [5, 1] }, { tick: 8, dur: 8, notes: ["F2", "F3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 4, notes: ["F4", "A4", "C5", "F5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["F4", "A4", "C5", "F5"], fingers: [1, 2, 3, 5] }] },
+              faithful: { chord: "F (Final)", pedal: false, tip: "Original Fiel: encerramento seco e firme em Fá Maior.", lh: [{ tick: 0, dur: 4, notes: ["F2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["F2"], fingers: [5] }], rh: [{ tick: 0, dur: 4, notes: ["F4", "A4", "C5"], fingers: [1, 2, 4] }, { tick: 8, dur: 8, notes: ["F4", "A4", "C5"], fingers: [1, 2, 4] }] }
+            }
+          ];
+        })()
+      ),
+      "bach-prelude-c": makeSongPack(
+        { title: "Prelude in C BWV 846 — J. S. Bach", info: "Tom: C • 72 BPM • 4/4", defaultBpm: 72, presets: [52, 64, 72] },
+        [{ id: 1, name: "1. Exposição (C → Am)" }, { id: 2, name: "2. Modulação (D7 → G)" }, { id: 3, name: "3. Pedal & Final" }],
+        (() => {
+          const bwv = (sec, title, lyric, bass1, bass2, rh3) => ({
+            sectionId: sec, title, lyric,
+            easy: { chord: title.split("—")[1]?.trim() || "C", pedal: true, tip: "Nível 1: segure o baixo e o acorde para memorizar a harmonia.", lh: [{ tick: 0, dur: 16, notes: [bass1], fingers: [5] }], rh: [{ tick: 0, dur: 16, notes: rh3, fingers: [1, 3, 5] }] },
+            medium: { chord: `${title.split("—")[1]?.trim() || "C"} (Arpejo)`, pedal: true, tip: "Nível 2: arpeje em colcheias aproveitando as mesmas teclas.", lh: [{ tick: 8, dur: 8, notes: [bass2], fingers: [2] }], rh: [{ tick: 0, dur: 4, notes: [rh3[0]], fingers: [1] }, { tick: 4, dur: 4, notes: [rh3[1]], fingers: [3] }, { tick: 8, dur: 4, notes: [rh3[2]], fingers: [5] }, { tick: 12, dur: 4, notes: [rh3[1]], fingers: [3] }] },
+            original: {
+              chord: `${title.split("—")[1]?.trim() || "C"} (BWV 846)`, pedal: true, tip: "Nível 3: 16 semicolcheias contínuas originais de Bach.",
+              lh: [{ tick: 0, dur: 8, notes: [bass1], fingers: [5] }, { tick: 2, dur: 6, notes: [bass2], fingers: [2] }, { tick: 8, dur: 8, notes: [bass1], fingers: [5] }, { tick: 10, dur: 6, notes: [bass2], fingers: [2] }],
+              rh: [4, 5, 6, 7, 12, 13, 14, 15].map((t, i) => {
+                const pat = [rh3[0], rh3[1], rh3[2], rh3[1]];
+                const fPat = [1, 3, 5, 3];
+                return { tick: t, dur: 1, notes: [pat[i % 4]], fingers: [fPat[i % 4]] };
+              })
+            }
+          });
+          return [
+            bwv(1, "Comp. 1 — C", "Dó Maior", "C3", "E3", ["G4", "C5", "E5"]),
+            bwv(1, "Comp. 2 — Dm7/C", "Ré Menor c/ baixo em Dó", "C3", "D3", ["A4", "D5", "F5"]),
+            bwv(1, "Comp. 3 — G7/B", "Sol com 7ª c/ baixo em Si", "B2", "D3", ["G4", "D5", "F5"]),
+            bwv(1, "Comp. 4 — C", "Retorno a Dó Maior", "C3", "E3", ["G4", "C5", "E5"]),
+            bwv(1, "Comp. 5 — Am/C", "Lá Menor c/ baixo em Dó", "C3", "E3", ["A4", "E5", "A5"]),
+            bwv(2, "Comp. 6 — D7/C", "Ré com 7ª preparando Sol", "C3", "D3", ["F#4", "A4", "D5"]),
+            bwv(2, "Comp. 7 — G/B", "Sol Maior c/ baixo em Si", "B2", "D3", ["G4", "D5", "G5"]),
+            bwv(2, "Comp. 8 — Cmaj7/B", "Dó com 7ª Maior", "B2", "C3", ["E4", "G4", "C5"]),
+            bwv(2, "Comp. 9 — Am7", "Lá Menor com 7ª", "A2", "C3", ["E4", "G4", "C5"]),
+            bwv(2, "Comp. 10 — D7", "Ré com 7ª", "D2", "A2", ["D4", "F#4", "C5"]),
+            bwv(2, "Comp. 11 — G", "Resolução em Sol Maior", "G2", "B2", ["D4", "G4", "B4"]),
+            bwv(3, "Comp. 12 — G7sus4/C", "Pedal de Dó (tensão)", "C2", "G2", ["F4", "A4", "C5"]),
+            bwv(3, "Comp. 13 — G7/C", "Pedal de Dó (dominante)", "C2", "G2", ["F4", "B4", "D5"]),
+            bwv(3, "Comp. 14 — Cmaj7", "Pedal de Dó (abertura)", "C2", "G2", ["E4", "B4", "E5"]),
+            {
+              sectionId: 3, title: "Comp. 15 — C (Final)", lyric: "Acorde final sereno em Dó Maior",
+              easy: { chord: "C (Final)", pedal: true, tip: "Repouso final.", lh: [{ tick: 0, dur: 16, notes: ["C3"], fingers: [5] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] },
+              medium: { chord: "C (Final)", pedal: true, tip: "Repouso final.", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] },
+              original: { chord: "C (Final)", pedal: true, tip: "Acorde final cheio.", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5", "E5"], fingers: [1, 2, 4, 5] }] }
+            }
+          ];
+        })()
+      ),
+      "bach-prelude-c": (() => {
+        const meta = { title: "Prelude in C Major (BWV 846) — J. S. Bach", info: "Tom: C • 72 BPM • 4/4 (35 Comp. Urtext)", defaultBpm: 72, presets: [54, 64, 72] };
+        const sections = [
+          { id: 1, name: "1. Exposição (1–11)" },
+          { id: 2, name: "2. Modulação (12–19)" },
+          { id: 3, name: "3. Clímax (20–23)" },
+          { id: 4, name: "4. Pedal de G (24–31)" },
+          { id: 5, name: "5. Pedal de C & Coda (32–35)" }
+        ];
+
+        // Padrão exato de Bach (BWV 846): 16 semicolcheias por compasso
+        // Cada metade (ticks 0..7 e 8..15): LH1(0) -> LH2(1) -> RH1(2) -> RH2(3) -> RH3(4) -> RH1(5) -> RH2(6) -> RH3(7)
+        const bwvBar = (id, sectionId, chord, desc, lh1, lh2, rh1, rh2, rh3, lhF = [5, 2], rhF = [1, 3, 5]) => ({
+          id,
+          tag: `Comp. ${id}`,
+          sectionId,
+          title: `Comp. ${id} — ${chord}`,
+          lyric: desc,
+          voice: [],
+          levels: {
+            easy: {
+              chord, pedal: true,
+              tip: `Nível 1 (Base): monte a fôrma do acorde — ME segura ${lh1}+${lh2}; MD toca ${rh1}–${rh2}–${rh3} nos tempos 1 e 3.`,
+              lh: [{ tick: 0, dur: 16, notes: [lh1, lh2], fingers: lhF }],
+              rh: [
+                { tick: 0, dur: 8, notes: [rh1, rh2, rh3], fingers: rhF },
+                { tick: 8, dur: 8, notes: [rh1, rh2, rh3], fingers: rhF }
+              ]
+            },
+            medium: {
+              chord: `${chord} (Colcheias)`, pedal: true,
+              tip: `Nível 2 (Arpejo Lento): mesmas 5 teclas do Nível 1, agora em colcheias subindo da ME para a MD.`,
+              lh: [
+                { tick: 0, dur: 16, notes: [lh1], fingers: [lhF[0]] },
+                { tick: 2, dur: 14, notes: [lh2], fingers: [lhF[1]] }
+              ],
+              rh: [
+                { tick: 4, dur: 2, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 6, dur: 2, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 8, dur: 2, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 10, dur: 2, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 12, dur: 2, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 14, dur: 2, notes: [rh3], fingers: [rhF[2]] }
+              ]
+            },
+            original: {
+              chord: `${chord} (Urtext 16x)`, pedal: false,
+              tip: `Nível 3 (Articulação Barroca): 16 semicolcheias exatas de Bach — segure ${lh1} e ${lh2} com os dedos enquanto a MD gira ${rh1}–${rh2}–${rh3}.`,
+              lh: [
+                { tick: 0, dur: 8, notes: [lh1], fingers: [lhF[0]] },
+                { tick: 1, dur: 7, notes: [lh2], fingers: [lhF[1]] },
+                { tick: 8, dur: 8, notes: [lh1], fingers: [lhF[0]] },
+                { tick: 9, dur: 7, notes: [lh2], fingers: [lhF[1]] }
+              ],
+              rh: [
+                { tick: 2, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 3, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 4, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 5, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 6, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 7, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 10, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 11, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 12, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 13, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 14, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 15, dur: 1, notes: [rh3], fingers: [rhF[2]] }
+              ]
+            },
+            faithful: {
+              chord, pedal: true,
+              tip: `Original Fiel (Rousseau): 16 semicolcheias fluidas com pedal limpo trocado a cada compasso.`,
+              lh: [
+                { tick: 0, dur: 8, notes: [lh1], fingers: [lhF[0]] },
+                { tick: 1, dur: 7, notes: [lh2], fingers: [lhF[1]] },
+                { tick: 8, dur: 8, notes: [lh1], fingers: [lhF[0]] },
+                { tick: 9, dur: 7, notes: [lh2], fingers: [lhF[1]] }
+              ],
+              rh: [
+                { tick: 2, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 3, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 4, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 5, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 6, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 7, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 10, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 11, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 12, dur: 1, notes: [rh3], fingers: [rhF[2]] },
+                { tick: 13, dur: 1, notes: [rh1], fingers: [rhF[0]] },
+                { tick: 14, dur: 1, notes: [rh2], fingers: [rhF[1]] },
+                { tick: 15, dur: 1, notes: [rh3], fingers: [rhF[2]] }
+              ]
+            }
+          }
+        });
+
+        const steps = [
+          // 1. Exposição (Comp. 1–11)
+          bwvBar(1, 1, "C", "Abertura serena em Dó Maior (0:00)", "C4", "E4", "G4", "C5", "E5"),
+          bwvBar(2, 1, "Dm7/C", "Ré Menor c/ baixo preso em C4", "C4", "D4", "A4", "D5", "F5"),
+          bwvBar(3, 1, "G7/B", "Sol com 7ª c/ baixo descendo para B3", "B3", "D4", "G4", "D5", "F5"),
+          bwvBar(4, 1, "C", "Resolução de volta a Dó Maior", "C4", "E4", "G4", "C5", "E5"),
+          bwvBar(5, 1, "Am/C", "Abertura luminosa até o A5 agudo", "C4", "E4", "A4", "E5", "A5"),
+          bwvBar(6, 1, "D7/C", "Introdução do F#4 preparando Sol Maior", "C4", "D4", "F#4", "A4", "D5"),
+          bwvBar(7, 1, "G/B", "Sol Maior luminoso em 1ª inversão", "B3", "D4", "G4", "D5", "G5"),
+          bwvBar(8, 1, "Cmaj7/B", "Dó com 7ª Maior descendo o registro", "B3", "C4", "E4", "G4", "C5"),
+          bwvBar(9, 1, "Am7", "Lá Menor com 7ª suave", "A3", "C4", "E4", "G4", "C5"),
+          bwvBar(10, 1, "D7", "Dominante de Sol Maior (D3 no baixo)", "D3", "A3", "D4", "F#4", "C5"),
+          bwvBar(11, 1, "G", "Cadência perfeita em Sol Maior", "G3", "B3", "D4", "G4", "B4"),
+
+          // 2. Modulação (Comp. 12–19)
+          bwvBar(12, 2, "C#dim7/G", "Passagem diminuta misteriosa (Bb3 e C#5)", "G3", "A#3", "E4", "G4", "C#5"),
+          bwvBar(13, 2, "Dm/F", "Resolve em Ré Menor com baixo em F3", "F3", "A3", "D4", "A4", "D5"),
+          bwvBar(14, 2, "Bdim7/F", "Diminuto com Ab3 descendo a tensão", "F3", "G#3", "D4", "F4", "B4"),
+          bwvBar(15, 2, "C/E", "Dó Maior em 1ª inversão (E3 no baixo)", "E3", "G3", "C4", "G4", "C5"),
+          bwvBar(16, 2, "Fmaj7/E", "Fá com 7ª Maior (som doce e suspenso)", "E3", "F3", "A3", "C4", "F4"),
+          bwvBar(17, 2, "Dm7", "Ré Menor com 7ª no registro médio-grave", "D3", "F3", "A3", "C4", "F4"),
+          bwvBar(18, 2, "G7", "Sol com 7ª grave (G2 no baixo)", "G2", "D3", "G3", "B3", "F4"),
+          bwvBar(19, 2, "C", "Retorno calmo ao centro tonal de Dó", "C3", "E3", "G3", "C4", "E4"),
+
+          // 3. Clímax Harmônico (Comp. 20–23)
+          bwvBar(20, 3, "C7", "Sétima menor (Bb3) puxando para Fá", "C3", "G3", "A#3", "C4", "E4"),
+          bwvBar(21, 3, "Fmaj7", "Fá com 7ª Maior profundo (F2 no baixo)", "F2", "F3", "A3", "C4", "E4"),
+          bwvBar(22, 3, "F#dim7", "Tensão cromática subindo para F#2 (Eb4 na ponta)", "F#2", "C3", "A3", "C4", "D#4"),
+          bwvBar(23, 3, "Abdim7", "Pico dramático em Ab2 preparando o Pedal de G", "G#2", "F3", "B3", "C4", "D4"),
+
+          // 4. Pedal de Sol (Comp. 24–31)
+          bwvBar(24, 4, "G7", "Início do longo Pedal de Sol (G2 preso)", "G2", "F3", "G3", "B3", "D4"),
+          bwvBar(25, 4, "C/G", "Dó Maior sobre o pedal de Sol", "G2", "E3", "G3", "C4", "E4"),
+          bwvBar(26, 4, "G7sus4", "Suspensão em C4–F4 sobre G2", "G2", "D3", "G3", "C4", "F4"),
+          bwvBar(27, 4, "G7", "Resolve a suspensão para B3–F4", "G2", "D3", "G3", "B3", "F4"),
+          bwvBar(28, 4, "F#dim7/G", "Tensão diminuta (Eb3 e F#4) sobre G2", "G2", "D#3", "A3", "C4", "F#4"),
+          bwvBar(29, 4, "C/G", "Abertura limpa até G4 sobre o pedal de Sol", "G2", "E3", "G3", "C4", "G4"),
+          bwvBar(30, 4, "G7sus4", "Nova suspensão antes da resolução final", "G2", "D3", "G3", "C4", "F4"),
+          bwvBar(31, 4, "G7", "Último compasso do Pedal de Sol", "G2", "D3", "G3", "B3", "F4"),
+
+          // 5. Pedal de Dó & Coda (Comp. 32–35)
+          bwvBar(32, 5, "C7", "Início do Pedal de Dó grave (C2 + C3)", "C2", "C3", "G3", "A#3", "E4"),
+          {
+            id: 33, tag: "Comp. 33", sectionId: 5, title: "Comp. 33 — F/C → Dm7/C (Coda 1)", lyric: "Cascata ascendente e descendente sobre o pedal de C2", voice: [],
+            levels: {
+              easy: {
+                chord: "F/C (Coda)", pedal: true, tip: "Nível 1: segure C2+C3 na ME e o acorde F3–A3–C4–F4 na MD.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }],
+                rh: [{ tick: 0, dur: 8, notes: ["F3", "A3", "C4", "F4"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["D3", "F3", "A3"], fingers: [1, 2, 4] }]
+              },
+              medium: {
+                chord: "F/C (Coda Colcheias)", pedal: true, tip: "Nível 2: suba e desça a cascata em colcheias sobre C2+C3.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 2, dur: 14, notes: ["C3"], fingers: [1] }],
+                rh: [
+                  { tick: 4, dur: 2, notes: ["F3"], fingers: [1] }, { tick: 6, dur: 2, notes: ["A3"], fingers: [2] },
+                  { tick: 8, dur: 2, notes: ["C4"], fingers: [3] }, { tick: 10, dur: 2, notes: ["F4"], fingers: [5] },
+                  { tick: 12, dur: 2, notes: ["C4"], fingers: [3] }, { tick: 14, dur: 2, notes: ["A3"], fingers: [2] }
+                ]
+              },
+              original: {
+                chord: "F/C → Dm7/C (Urtext)", pedal: true, tip: "Nível 3: cascata original exata em 16 semicolcheias sobre C2–C3.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 1, dur: 15, notes: ["C3"], fingers: [1] }],
+                rh: [
+                  { tick: 2, dur: 1, notes: ["F3"], fingers: [1] }, { tick: 3, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 4, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 5, dur: 1, notes: ["F4"], fingers: [5] },
+                  { tick: 6, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 7, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 8, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 9, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 10, dur: 1, notes: ["F3"], fingers: [1] }, { tick: 11, dur: 1, notes: ["A3"], fingers: [3] },
+                  { tick: 12, dur: 1, notes: ["F3"], fingers: [2] }, { tick: 13, dur: 1, notes: ["D3"], fingers: [1] },
+                  { tick: 14, dur: 1, notes: ["F3"], fingers: [2] }, { tick: 15, dur: 1, notes: ["D3"], fingers: [1] }
+                ]
+              },
+              faithful: {
+                chord: "F/C → Dm7/C (Coda 1)", pedal: true, tip: "Original Fiel (Rousseau): cascata completa sobre o pedal de C2–C3 com ligeiro ritardando.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 1, dur: 15, notes: ["C3"], fingers: [1] }],
+                rh: [
+                  { tick: 2, dur: 1, notes: ["F3"], fingers: [1] }, { tick: 3, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 4, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 5, dur: 1, notes: ["F4"], fingers: [5] },
+                  { tick: 6, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 7, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 8, dur: 1, notes: ["C4"], fingers: [3] }, { tick: 9, dur: 1, notes: ["A3"], fingers: [2] },
+                  { tick: 10, dur: 1, notes: ["F3"], fingers: [1] }, { tick: 11, dur: 1, notes: ["A3"], fingers: [3] },
+                  { tick: 12, dur: 1, notes: ["F3"], fingers: [2] }, { tick: 13, dur: 1, notes: ["D3"], fingers: [1] },
+                  { tick: 14, dur: 1, notes: ["F3"], fingers: [2] }, { tick: 15, dur: 1, notes: ["D3"], fingers: [1] }
+                ]
+              }
+            }
+          },
+          {
+            id: 34, tag: "Comp. 34", sectionId: 5, title: "Comp. 34 — G7/C (Coda 2)", lyric: "Cascata final de dominante preparando o acorde de repouso", voice: [],
+            levels: {
+              easy: {
+                chord: "G7/C (Coda)", pedal: true, tip: "Nível 1: segure C2+B2 na ME e G4–B4–D5–F5 na MD.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2", "B2"], fingers: [5, 1] }],
+                rh: [{ tick: 0, dur: 8, notes: ["G4", "B4", "D5", "F5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["D4", "F4", "B4"], fingers: [1, 2, 5] }]
+              },
+              medium: {
+                chord: "G7/C (Coda Colcheias)", pedal: true, tip: "Nível 2: arpejo em colcheias sobre o pedal C2+B2.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 2, dur: 14, notes: ["B2"], fingers: [1] }],
+                rh: [
+                  { tick: 4, dur: 2, notes: ["G4"], fingers: [1] }, { tick: 6, dur: 2, notes: ["B4"], fingers: [2] },
+                  { tick: 8, dur: 2, notes: ["D5"], fingers: [3] }, { tick: 10, dur: 2, notes: ["F5"], fingers: [5] },
+                  { tick: 12, dur: 2, notes: ["D5"], fingers: [3] }, { tick: 14, dur: 2, notes: ["B4"], fingers: [2] }
+                ]
+              },
+              original: {
+                chord: "G7/C (Urtext)", pedal: true, tip: "Nível 3: cascata exata de G7 sobre C2–B2 descendo até F4–E4–D4.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 1, dur: 15, notes: ["B2"], fingers: [1] }],
+                rh: [
+                  { tick: 2, dur: 1, notes: ["G4"], fingers: [1] }, { tick: 3, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 4, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 5, dur: 1, notes: ["F5"], fingers: [5] },
+                  { tick: 6, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 7, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 8, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 9, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 10, dur: 1, notes: ["G4"], fingers: [1] }, { tick: 11, dur: 1, notes: ["B4"], fingers: [3] },
+                  { tick: 12, dur: 1, notes: ["D4"], fingers: [1] }, { tick: 13, dur: 1, notes: ["F4"], fingers: [3] },
+                  { tick: 14, dur: 1, notes: ["E4"], fingers: [2] }, { tick: 15, dur: 1, notes: ["D4"], fingers: [1] }
+                ]
+              },
+              faithful: {
+                chord: "G7/C (Coda 2)", pedal: true, tip: "Original Fiel (Rousseau): desacelere suavemente nas últimas 4 notas (D4–F4–E4–D4) antes de pousar em Dó.",
+                lh: [{ tick: 0, dur: 16, notes: ["C2"], fingers: [5] }, { tick: 1, dur: 15, notes: ["B2"], fingers: [1] }],
+                rh: [
+                  { tick: 2, dur: 1, notes: ["G4"], fingers: [1] }, { tick: 3, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 4, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 5, dur: 1, notes: ["F5"], fingers: [5] },
+                  { tick: 6, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 7, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 8, dur: 1, notes: ["D5"], fingers: [3] }, { tick: 9, dur: 1, notes: ["B4"], fingers: [2] },
+                  { tick: 10, dur: 1, notes: ["G4"], fingers: [1] }, { tick: 11, dur: 1, notes: ["B4"], fingers: [3] },
+                  { tick: 12, dur: 1, notes: ["D4"], fingers: [1] }, { tick: 13, dur: 1, notes: ["F4"], fingers: [3] },
+                  { tick: 14, dur: 1, notes: ["E4"], fingers: [2] }, { tick: 15, dur: 1, notes: ["D4"], fingers: [1] }
+                ]
+              }
+            }
+          },
+          {
+            id: 35, tag: "Comp. 35", sectionId: 5, title: "Comp. 35 — C (Acorde Final)", lyric: "Repouso final luminoso em Dó Maior (2:42)", voice: [],
+            levels: {
+              easy: { chord: "C (Final)", pedal: true, tip: "Acorde final sereno em Dó Maior.", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] },
+              medium: { chord: "C (Final)", pedal: true, tip: "Acorde final sereno em Dó Maior.", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] },
+              original: { chord: "C (Final)", pedal: true, tip: "Acorde final Urtext completo (C2–C3 | E4–G4–C5).", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] },
+              faithful: { chord: "C (Final)", pedal: true, tip: "Original Fiel: deixe o acorde final ressoar com o pedal até silenciar.", lh: [{ tick: 0, dur: 16, notes: ["C2", "C3"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "C5"], fingers: [1, 2, 5] }] }
+            }
+          }
+        ];
+
+        return { meta, sections, steps };
+      })(),
+      "hallelujah": makeSongPack(
+        { title: "Hallelujah — Leonard Cohen", info: "Tom: C • 60 BPM • 4/4", defaultBpm: 60, presets: [50, 60, 72] },
+        [{ id: 1, name: "1. Verso" }, { id: 2, name: "2. Pré-Refrão" }, { id: 3, name: "3. Refrão (Hallelujah)" }],
+        (() => {
+          const bar = (sec, t, l, ch, b1, b2, r1, r2, v) => ({
+            sectionId: sec, title: t, lyric: l, voice: v || [],
+            easy: { chord: ch, pedal: true, tip: "Nível 1: acorde limpo nos tempos 1 e 3.", lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }], rh: [{ tick: 0, dur: 8, notes: r1, fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: r2, fingers: [1, 2, 5] }] },
+            medium: { chord: `${ch} (Arpejo)`, pedal: true, tip: "Nível 2: dedilha os arpejos mantendo a base.", lh: [{ tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }], rh: [{ tick: 4, dur: 4, notes: [r1[1], r1[2]], fingers: [2, 5] }, { tick: 12, dur: 4, notes: [r2[1], r2[2]], fingers: [2, 5] }] },
+            original: { chord: ch, pedal: true, tip: "Nível 3: arpejo fluido contínuo.", lh: [], rh: [{ tick: 2, dur: 2, notes: [r1[2]], fingers: [5] }, { tick: 6, dur: 2, notes: [r1[1]], fingers: [2] }, { tick: 10, dur: 2, notes: [r2[2]], fingers: [5] }, { tick: 14, dur: 2, notes: [r2[1]], fingers: [2] }] }
+          });
+          return [
+            bar(1, "Verso — C → Am", "\"I've heard there was a secret chord...\"", "C → Am", "C3", "A2", ["C4", "E4", "G4"], ["A3", "C4", "E4"], [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 4, note: "A4" }, { tick: 12, dur: 4, note: "C5" }]),
+            bar(1, "Verso — C → Am", "\"...that David played and it pleased the Lord\"", "C → Am", "C3", "A2", ["C4", "E4", "G4"], ["A3", "C4", "E4"], [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 4, note: "C5" }, { tick: 12, dur: 4, note: "A4" }]),
+            bar(2, "Pré-Refrão — F → G", "\"But you don't really care for music...\"", "F → G", "F2", "G2", ["F4", "A4", "C5"], ["G4", "B4", "D5"], [{ tick: 0, dur: 4, note: "A4" }, { tick: 4, dur: 4, note: "C5" }, { tick: 8, dur: 4, note: "D5" }, { tick: 12, dur: 4, note: "D5" }]),
+            bar(2, "Pré-Refrão — C → G", "\"...do you?\"", "C → G", "C3", "G2", ["C4", "E4", "G4"], ["G4", "B4", "D5"], [{ tick: 0, dur: 8, note: "E5" }, { tick: 8, dur: 8, note: "D5" }]),
+            bar(2, "Subida — C → F → G", "\"It goes like this, the fourth, the fifth...\"", "C → F → G", "C3", "F2", ["C4", "E4", "G4"], ["F4", "A4", "C5"], [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "C5" }, { tick: 8, dur: 4, note: "D5" }, { tick: 12, dur: 4, note: "E5" }]),
+            bar(2, "Subida — Am → F → G → E7", "\"...the minor fall, the major lift...\"", "Am → E7", "A2", "E2", ["A3", "C4", "E4"], ["E4", "G#4", "B4"], [{ tick: 0, dur: 4, note: "E5" }, { tick: 4, dur: 4, note: "F5" }, { tick: 8, dur: 4, note: "E5" }, { tick: 12, dur: 4, note: "D5" }]),
+            bar(3, "Refrão — F → Am", "\"Hallelujah...\"", "F → Am", "F2", "A2", ["F4", "A4", "C5"], ["A3", "C4", "E4"], [{ tick: 0, dur: 3, note: "E4" }, { tick: 3, dur: 3, note: "G4" }, { tick: 6, dur: 6, note: "A4" }, { tick: 12, dur: 4, note: "A4" }]),
+            bar(3, "Refrão — F → C → G → C", "\"...Hallelujah!\"", "F → C → G → C", "F2", "C3", ["F4", "A4", "C5"], ["C4", "E4", "G4"], [{ tick: 0, dur: 3, note: "A4" }, { tick: 3, dur: 3, note: "G4" }, { tick: 6, dur: 4, note: "E4" }, { tick: 10, dur: 6, note: "C4" }])
+          ];
+        })()
+      ),
+      "country-roads": makeSongPack(
+        { title: "Take Me Home, Country Roads — John Denver", info: "Tom: C • 82 BPM • 4/4", defaultBpm: 82, presets: [64, 74, 82] },
+        [{ id: 1, name: "1. Verso" }, { id: 2, name: "2. Refrão (Country Roads)" }],
+        (() => {
+          const folk = (sec, t, l, ch, b1, b2, r1, r2, v) => ({
+            sectionId: sec, title: t, lyric: l, voice: v || [],
+            easy: { chord: ch, pedal: true, tip: "Nível 1: ME marca o baixo nos tempos 1 e 3; MD toca o acorde.", lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }], rh: [{ tick: 0, dur: 8, notes: r1, fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: r2, fingers: [1, 2, 5] }] },
+            medium: { chord: `${ch} (Folk)`, pedal: true, tip: "Nível 2: levada folk marcando todos os 4 tempos.", lh: [{ tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }], rh: [{ tick: 4, dur: 4, notes: r1, fingers: [1, 2, 5] }, { tick: 12, dur: 4, notes: r2, fingers: [1, 2, 5] }] },
+            original: { chord: ch, pedal: true, tip: "Nível 3: colcheias completas na MD.", lh: [], rh: [2, 6, 10, 14].map(k => ({ tick: k, dur: 2, notes: k < 8 ? r1 : r2, fingers: [1, 2, 5] })) }
+          });
+          return [
+            folk(1, "Verso — C", "\"Almost heaven, West Virginia...\"", "C", "C3", "G2", ["C4", "E4", "G4"], ["C4", "E4", "G4"], [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 8, note: "A4" }]),
+            folk(1, "Verso — Am", "\"...Blue Ridge Mountains...\"", "Am", "A2", "E2", ["A3", "C4", "E4"], ["A3", "C4", "E4"], [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "A4" }, { tick: 8, dur: 8, note: "G4" }]),
+            folk(1, "Verso — G → F → C", "\"...Shenandoah River\"", "G → F → C", "G2", "F2", ["G4", "B4", "D5"], ["F4", "A4", "C5"], [{ tick: 0, dur: 4, note: "A4" }, { tick: 4, dur: 4, note: "C5" }, { tick: 8, dur: 4, note: "D5" }, { tick: 12, dur: 4, note: "C5" }]),
+            folk(2, "Refrão — C → G", "\"Country roads, take me home...\"", "C → G", "C3", "G2", ["C4", "E4", "G4"], ["G4", "B4", "D5"], [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 4, note: "E5" }, { tick: 12, dur: 4, note: "E5" }]),
+            folk(2, "Refrão — Am → F", "\"...to the place I belong...\"", "Am → F", "A2", "F2", ["A3", "C4", "E4"], ["F4", "A4", "C5"], [{ tick: 0, dur: 4, note: "E5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 4, note: "C5" }, { tick: 12, dur: 4, note: "A4" }]),
+            folk(2, "Refrão — C → G", "\"...West Virginia, mountain mama...\"", "C → G", "C3", "G2", ["C4", "E4", "G4"], ["G4", "B4", "D5"], [{ tick: 0, dur: 4, note: "C5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 4, note: "E5" }, { tick: 12, dur: 4, note: "G5" }]),
+            folk(2, "Refrão — F → C (Final)", "\"...take me home, country roads\"", "F → C", "F2", "C3", ["F4", "A4", "C5"], ["C4", "E4", "G4"], [{ tick: 0, dur: 4, note: "E5" }, { tick: 4, dur: 4, note: "D5" }, { tick: 8, dur: 8, note: "C5" }])
+          ];
+        })()
+      ),
+      "binks-sake": makeSongPack(
+        { title: "Binks' Sake (One Piece) — Kouhei Tanaka", info: "Tom: Eb • 120 BPM • 4/4 Swing (Partitura Completa)", defaultBpm: 120, presets: [80, 100, 120] },
+        [
+          { id: 1, name: "1. Intro Ragtime (Comp. 1–11)" },
+          { id: 2, name: "2. Yo-hohoho! (Comp. 12–21)" },
+          { id: 3, name: "3. Verso Segno (Comp. 22–29)" },
+          { id: 4, name: "4. Interlúdio D.S. (Comp. 30–39)" },
+          { id: 5, name: "5. Verso 2 (D.S. al Coda)" },
+          { id: 6, name: "6. Coda Final 1ª & 2ª Casa (Comp. 40–48)" }
+        ],
+        (() => {
+          // Helper fiel à partitura binks-sake_2.pdf (Eb Maior: Bb, Eb, Ab)
+          // Gera 4 níveis conectados a partir das notas EXATAS da partitura (lhOrig, rhOrig)
+          const pdfBar = (sec, title, lyric, chord, lhOrig, rhOrig, voice, tip) => {
+            const lhEasy = lhOrig.length
+              ? [
+                  { tick: 0, dur: 8, notes: [lhOrig[0].notes[0]], fingers: [lhOrig[0].fingers[0]] },
+                  ...(lhOrig.length > 2 ? [{ tick: 8, dur: 8, notes: [lhOrig[Math.floor(lhOrig.length / 2)].notes[0]], fingers: [lhOrig[Math.floor(lhOrig.length / 2)].fingers[0]] }] : [])
+                ]
+              : [];
+            const rhEasy = rhOrig
+              .filter(ev => ev.tick % 4 === 0 || rhOrig.length <= 3)
+              .map(ev => ({
+                tick: ev.tick,
+                dur: Math.max(4, ev.dur),
+                notes: [ev.notes[ev.notes.length - 1]],
+                fingers: [ev.fingers[ev.fingers.length - 1]]
+              }));
+            const rhMed = rhOrig.map(ev => ({
+              tick: ev.tick,
+              dur: ev.dur,
+              notes: ev.notes.length > 2 ? [ev.notes[0], ev.notes[ev.notes.length - 1]] : ev.notes,
+              fingers: ev.fingers.length > 2 ? [ev.fingers[0], ev.fingers[ev.fingers.length - 1]] : ev.fingers
+            }));
+            return {
+              sectionId: sec, title, lyric, voice: voice || [],
+              easy: {
+                chord, pedal: false,
+                tip: `Nível 1 (Base): notas principais da melodia da partitura com baixo simplificado em ${chord}.`,
+                lh: lhEasy,
+                rh: rhEasy.length ? rhEasy : rhMed
+              },
+              medium: {
+                chord, pedal: false,
+                tip: `Nível 2 (Melodia + Baixo): baixo exato da partitura + melodia em 1–2 notas na MD.`,
+                lh: lhOrig,
+                rh: rhMed
+              },
+              original: {
+                chord, pedal: false,
+                tip: tip || `Nível 3 (Partitura Completa): exatamente como escrito em binks-sake_2.pdf.`,
+                lh: lhOrig,
+                rh: rhOrig
+              },
+              faithful: {
+                chord, pedal: false,
+                tip: tip || `Original Fiel (Eb Maior): transcrição exata de binks-sake_2.pdf.`,
+                lh: lhOrig,
+                rh: rhOrig
+              }
+            };
+          };
+
+          // --- COMPASSOS 1 A 11 (INTRO RAGTIME - PÁG. 1) ---
+          const introMeasures = (sec, tagPrefix) => [
+            // Comp. 1: Pickup cromático (sem ME)
+            pdfBar(sec, `${tagPrefix} Comp. 1 — Pickup Cromático`, "Ab5+C6 → C5 → G5+B5 → C5 → Gb5+Bb5 → C5", "Eb (Intro)",
+              [],
+              [
+                { tick: 4, dur: 2, notes: ["G#5", "C6"], fingers: [3, 5] },
+                { tick: 6, dur: 2, notes: ["C5"], fingers: [1] },
+                { tick: 8, dur: 2, notes: ["G5", "B5"], fingers: [3, 5] },
+                { tick: 10, dur: 2, notes: ["C5"], fingers: [1] },
+                { tick: 12, dur: 2, notes: ["F#5", "A#5"], fingers: [2, 4] },
+                { tick: 14, dur: 2, notes: ["C5"], fingers: [1] }
+              ],
+              [], "Comp. 1 da partitura: abertura solo na MD com terças cromáticas descendo sobre o pivô C5."
+            ),
+            // Comp. 2: Eb
+            pdfBar(sec, `${tagPrefix} Comp. 2 — Eb`, "Tema Ragtime (Bb4-Eb5-G5 → F5 → G5)", "Eb",
+              [
+                { tick: 0, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["A#2"], fingers: [2] },
+                { tick: 8, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }
+              ],
+              [
+                { tick: 0, dur: 6, notes: ["A#4", "D#5", "G5"], fingers: [1, 3, 5] },
+                { tick: 6, dur: 4, notes: ["A#4", "D#5"], fingers: [1, 3] },
+                { tick: 10, dur: 2, notes: ["F5"], fingers: [4] },
+                { tick: 12, dur: 4, notes: ["G5"], fingers: [5] }
+              ]
+            ),
+            // Comp. 3: Ab -> Adim7
+            pdfBar(sec, `${tagPrefix} Comp. 3 — Ab → Adim7`, "Acorde Ab (Ab4-C5-F5) → F#4-C5-Eb5", "Ab → Adim7",
+              [
+                { tick: 0, dur: 4, notes: ["G#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] },
+                { tick: 8, dur: 4, notes: ["A2"], fingers: [4] },
+                { tick: 12, dur: 4, notes: ["D#3"], fingers: [1] }
+              ],
+              [
+                { tick: 0, dur: 6, notes: ["G#4", "C5", "F5"], fingers: [1, 2, 5] },
+                { tick: 6, dur: 10, notes: ["F#4", "C5", "D#5"], fingers: [1, 3, 5] }
+              ]
+            ),
+            // Comp. 4: Bb7
+            pdfBar(sec, `${tagPrefix} Comp. 4 — Bb7`, "Subida ragtime F#4+D5 → G4+Eb5 → F5 → F#5", "Bb7",
+              [
+                { tick: 0, dur: 4, notes: ["A#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["F3"], fingers: [1] },
+                { tick: 8, dur: 4, notes: ["A#2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["F3"], fingers: [1] }
+              ],
+              [
+                { tick: 4, dur: 4, notes: ["F#4", "D5"], fingers: [1, 4] },
+                { tick: 8, dur: 2, notes: ["G4", "D#5"], fingers: [1, 4] },
+                { tick: 10, dur: 2, notes: ["F5"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["F#5"], fingers: [5] }
+              ]
+            ),
+            // Comp. 5: Eb
+            pdfBar(sec, `${tagPrefix} Comp. 5 — Eb`, "Frase descendente Bb4+G5 → Eb5 → C5 → Bb4", "Eb",
+              [
+                { tick: 0, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["A#2"], fingers: [2] },
+                { tick: 8, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }
+              ],
+              [
+                { tick: 0, dur: 2, notes: ["A#4", "G5"], fingers: [1, 5] },
+                { tick: 2, dur: 2, notes: ["D#5"], fingers: [3] },
+                { tick: 4, dur: 2, notes: ["C5"], fingers: [2] },
+                { tick: 6, dur: 10, notes: ["A#4"], fingers: [1] }
+              ]
+            ),
+            // Comp. 6: Bb7
+            pdfBar(sec, `${tagPrefix} Comp. 6 — Bb7`, "F5 → Gb5 → G5 → F5 → Eb5", "Bb7",
+              [
+                { tick: 0, dur: 4, notes: ["A#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["F3"], fingers: [1] },
+                { tick: 8, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["F3"], fingers: [1] }
+              ],
+              [
+                { tick: 0, dur: 4, notes: ["A#4", "F5"], fingers: [1, 4] },
+                { tick: 4, dur: 4, notes: ["F#5"], fingers: [4] },
+                { tick: 8, dur: 2, notes: ["A#4", "G5"], fingers: [1, 5] },
+                { tick: 10, dur: 2, notes: ["F5"], fingers: [4] },
+                { tick: 12, dur: 4, notes: ["D#5"], fingers: [3] }
+              ]
+            ),
+            // Comp. 7: Eb
+            pdfBar(sec, `${tagPrefix} Comp. 7 — Eb`, "Repete frase descendente Bb4+G5 → Eb5 → C5 → Bb4", "Eb",
+              [
+                { tick: 0, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["A#2"], fingers: [2] },
+                { tick: 8, dur: 4, notes: ["D#2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }
+              ],
+              [
+                { tick: 0, dur: 2, notes: ["A#4", "G5"], fingers: [1, 5] },
+                { tick: 2, dur: 2, notes: ["D#5"], fingers: [3] },
+                { tick: 4, dur: 2, notes: ["C5"], fingers: [2] },
+                { tick: 6, dur: 10, notes: ["A#4"], fingers: [1] }
+              ]
+            ),
+            // Comp. 8: F7
+            pdfBar(sec, `${tagPrefix} Comp. 8 — F7`, "A4 natural → C4-F4-A4 → G4 → F4-A4", "F7",
+              [
+                { tick: 0, dur: 4, notes: ["F2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["C3"], fingers: [1] },
+                { tick: 8, dur: 4, notes: ["F2"], fingers: [5] },
+                { tick: 12, dur: 4, notes: ["C3"], fingers: [1] }
+              ],
+              [
+                { tick: 0, dur: 4, notes: ["A4"], fingers: [4] },
+                { tick: 4, dur: 4, notes: ["C4", "F4", "A4"], fingers: [1, 2, 4] },
+                { tick: 8, dur: 4, notes: ["G4"], fingers: [3] },
+                { tick: 12, dur: 4, notes: ["F4", "A4"], fingers: [2, 4] }
+              ]
+            ),
+            // Comp. 9: Bb7
+            pdfBar(sec, `${tagPrefix} Comp. 9 — Bb7`, "Acorde F4-Bb4-D5 → C5 → F4-Bb4", "Bb7",
+              [
+                { tick: 0, dur: 4, notes: ["A#2"], fingers: [2] },
+                { tick: 4, dur: 4, notes: ["F2"], fingers: [5] },
+                { tick: 8, dur: 4, notes: ["A#2"], fingers: [2] },
+                { tick: 12, dur: 4, notes: ["F2"], fingers: [5] }
+              ],
+              [
+                { tick: 0, dur: 4, notes: ["F4", "A#4", "D5"], fingers: [1, 3, 5] },
+                { tick: 4, dur: 2, notes: ["C5"], fingers: [4] },
+                { tick: 6, dur: 10, notes: ["F4", "A#4"], fingers: [1, 3] }
+              ]
+            ),
+            // Comp. 10: F7 -> Bb7 (Tercinas sobre F5)
+            pdfBar(sec, `${tagPrefix} Comp. 10 — Tercinas (A4→Bb4→B4→C5)`, "Subida cromática alternando com F5", "F7 → Bb7",
+              [
+                { tick: 0, dur: 4, notes: ["F2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["G2"], fingers: [4] },
+                { tick: 8, dur: 4, notes: ["G#2"], fingers: [3] },
+                { tick: 12, dur: 4, notes: ["A2"], fingers: [2] }
+              ],
+              [
+                { tick: 0, dur: 2, notes: ["A4"], fingers: [1] },
+                { tick: 2, dur: 2, notes: ["F5"], fingers: [5] },
+                { tick: 4, dur: 2, notes: ["A#4"], fingers: [1] },
+                { tick: 6, dur: 2, notes: ["F5"], fingers: [5] },
+                { tick: 8, dur: 2, notes: ["B4"], fingers: [2] },
+                { tick: 10, dur: 2, notes: ["F5"], fingers: [5] },
+                { tick: 12, dur: 2, notes: ["C5"], fingers: [2] },
+                { tick: 14, dur: 2, notes: ["F5"], fingers: [5] }
+              ]
+            ),
+            // Comp. 11: Bb7 Subida em oitavas
+            pdfBar(sec, `${tagPrefix} Comp. 11 — Bb7 (Chamada)`, "Oitavas agudas D5+Bb5 preparando Yo-hohoho!", "Bb7",
+              [
+                { tick: 0, dur: 4, notes: ["A#2"], fingers: [5] },
+                { tick: 4, dur: 4, notes: ["C3"], fingers: [4] },
+                { tick: 8, dur: 4, notes: ["C#3"], fingers: [3] },
+                { tick: 12, dur: 4, notes: ["D3"], fingers: [2] }
+              ],
+              [
+                { tick: 0, dur: 4, notes: ["D5", "A#5"], fingers: [1, 5] },
+                { tick: 4, dur: 4, notes: ["D5", "A#5"], fingers: [1, 5] },
+                { tick: 8, dur: 4, notes: ["C5", "A5"], fingers: [1, 5] },
+                { tick: 12, dur: 4, notes: ["D5", "A#5"], fingers: [1, 5] }
+              ]
+            )
+          ];
+
+          // --- COMPASSOS 12 A 19 (CORO YO-HOHOHO - PÁG. 1 & PÁG. 3 CODA) ---
+          const yohoBarA = (sec, title, lyric, chord, lhArr) => pdfBar(sec, title, lyric, chord, lhArr,
+            [
+              { tick: 0, dur: 2, notes: ["D#4", "G4"], fingers: [1, 2] },
+              { tick: 2, dur: 1, notes: ["A#4"], fingers: [4] },
+              { tick: 3, dur: 1, notes: ["A#4"], fingers: [4] },
+              { tick: 4, dur: 8, notes: ["A#4"], fingers: [4] },
+              { tick: 12, dur: 2, notes: ["D#4", "C5"], fingers: [1, 5] },
+              { tick: 14, dur: 2, notes: ["A#4"], fingers: [4] }
+            ],
+            [
+              { tick: 0, dur: 2, note: "G4" }, { tick: 2, dur: 1, note: "A#4" }, { tick: 3, dur: 1, note: "A#4" },
+              { tick: 4, dur: 8, note: "A#4" }, { tick: 12, dur: 2, note: "C5" }, { tick: 14, dur: 2, note: "A#4" }
+            ]
+          );
+
+          const yohoBarB = (sec, title, lyric, chord, lhArr) => pdfBar(sec, title, lyric, chord, lhArr,
+            [
+              { tick: 0, dur: 4, notes: ["D#4", "G4"], fingers: [1, 2] },
+              { tick: 4, dur: 8, notes: ["D#4", "A#4"], fingers: [1, 4] }
+            ],
+            [
+              { tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 8, note: "A#4" }
+            ]
+          );
+
+          const yohoBarEnd = (sec, title, lyric, chord, lhArr, isFinal2ndEnding = false) => pdfBar(sec, title, lyric, chord, lhArr,
+            isFinal2ndEnding
+              ? [
+                  { tick: 0, dur: 4, notes: ["G4"], fingers: [2] },
+                  { tick: 4, dur: 4, notes: ["D#4"], fingers: [1] },
+                  { tick: 8, dur: 8, notes: ["G4", "A#4", "D#5"], fingers: [1, 2, 5] }
+                ]
+              : [
+                  { tick: 0, dur: 4, notes: ["G4"], fingers: [2] },
+                  { tick: 4, dur: 8, notes: ["D#4"], fingers: [1] }
+                ],
+            [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 8, note: "D#4" }]
+          );
+
+          const lhEb = [{ tick: 0, dur: 4, notes: ["D#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["A#2"], fingers: [2] }, { tick: 8, dur: 4, notes: ["A#2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }];
+          const lhEbDesc = [{ tick: 0, dur: 4, notes: ["D#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["A#2"], fingers: [2] }, { tick: 8, dur: 4, notes: ["A2"], fingers: [3] }, { tick: 12, dur: 4, notes: ["G#2"], fingers: [4] }];
+          const lhAb = [{ tick: 0, dur: 4, notes: ["G#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["G#2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["D#3"], fingers: [1] }];
+          const lhGb = [{ tick: 0, dur: 4, notes: ["F#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["F2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["D#3"], fingers: [1] }];
+          const lhFmBb = [{ tick: 0, dur: 8, notes: ["F2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [2] }];
+          const lhEbCad = [{ tick: 0, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 4, dur: 4, notes: ["A#2"], fingers: [3] }, { tick: 8, dur: 8, notes: ["D#2"], fingers: [5] }];
+
+          const coroBlock = (sec, prefix, startNum, includeBridge, isSecondEnding) => {
+            const arr = [
+              yohoBarA(sec, `${prefix} Comp. ${startNum} — Eb`, "\"Yo-hohoho, yo-ho-ho-ho!\"", "Eb", lhEb),
+              yohoBarB(sec, `${prefix} Comp. ${startNum + 1} — Eb`, "\"Yo-ho-ho-ho!\"", "Eb", lhEb),
+              yohoBarA(sec, `${prefix} Comp. ${startNum + 2} — Eb`, "\"Yo-hohoho, yo-ho-ho-ho!\"", "Eb", lhEb),
+              yohoBarEnd(sec, `${prefix} Comp. ${startNum + 3} — Eb → Ab`, "\"Yo-ho-ho-ho!\" (baixo Eb→Bb→A→Ab)", "Eb → Eb7", lhEbDesc),
+              yohoBarA(sec, `${prefix} Comp. ${startNum + 4} — Ab`, "\"Yo-hohoho, yo-ho-ho-ho!\"", "Ab", lhAb),
+              yohoBarB(sec, `${prefix} Comp. ${startNum + 5} — Gb → Fm`, "\"Yo-ho-ho-ho!\" (baixo Gb2 → F2)", "Abm / Gb", lhGb),
+              yohoBarA(sec, `${prefix} Comp. ${startNum + 6} — Fm → Bb7`, "\"Yo-hohoho, yo-ho-ho-ho!\"", "Fm → Bb7", lhFmBb),
+              yohoBarEnd(sec, `${prefix} Comp. ${startNum + 7} — Eb`, isSecondEnding ? "Final em Eb Maior! (Casa 2)" : "\"Yo-ho-ho-ho!\" (Repouso em Eb)", "Eb", lhEbCad, isSecondEnding)
+            ];
+            if (includeBridge) {
+              arr.push(
+                pdfBar(sec, `${prefix} Comp. 20 — Bb7 (Ponte)`, "Subida Bb4 → D5 → F5 → Eb5 → D5", "Bb7",
+                  [{ tick: 0, dur: 4, notes: ["A#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["F3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["D#2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }],
+                  [{ tick: 0, dur: 4, notes: ["A#4"], fingers: [1] }, { tick: 4, dur: 4, notes: ["D5"], fingers: [3] }, { tick: 8, dur: 2, notes: ["F5"], fingers: [5] }, { tick: 10, dur: 2, notes: ["D#5"], fingers: [4] }, { tick: 12, dur: 4, notes: ["D5"], fingers: [3] }]
+                ),
+                pdfBar(sec, `${prefix} Comp. 21 — Ab → Bb7`, "Cascata Gb5 → F5 → Eb5 → F5 → Eb5 → Db5 → C5", "Ab → Bb7",
+                  [{ tick: 0, dur: 4, notes: ["G#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["A2"], fingers: [4] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [3] }],
+                  [{ tick: 0, dur: 2, notes: ["F#5"], fingers: [5] }, { tick: 2, dur: 2, notes: ["F5"], fingers: [4] }, { tick: 4, dur: 2, notes: ["D#5"], fingers: [3] }, { tick: 6, dur: 2, notes: ["F5"], fingers: [4] }, { tick: 8, dur: 2, notes: ["D#5"], fingers: [3] }, { tick: 10, dur: 2, notes: ["C#5"], fingers: [2] }, { tick: 12, dur: 4, notes: ["C5"], fingers: [1] }]
+                )
+              );
+            }
+            return arr;
+          };
+
+          // --- COMPASSOS 22 A 29 (VERSO SEGNO - PÁG. 2) ---
+          const versoBlock = (sec, prefix) => [
+            // Comp. 22: Eb
+            pdfBar(sec, `${prefix} Comp. 22 — Eb`, "\"Binkusu no sake o...\"", "Eb",
+              [{ tick: 0, dur: 4, notes: ["D#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 12, dur: 4, notes: ["C3"], fingers: [3] }],
+              [{ tick: 0, dur: 2, notes: ["A#4"], fingers: [5] }, { tick: 2, dur: 2, notes: ["G4"], fingers: [4] }, { tick: 4, dur: 2, notes: ["F4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D#4"], fingers: [2] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 12, dur: 4, notes: ["D#4"], fingers: [3] }],
+              [{ tick: 0, dur: 2, note: "A#4" }, { tick: 2, dur: 2, note: "G4" }, { tick: 4, dur: 2, note: "F4" }, { tick: 6, dur: 2, note: "D#4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D4" }, { tick: 12, dur: 4, note: "D#4" }]
+            ),
+            // Comp. 23: Ab
+            pdfBar(sec, `${prefix} Comp. 23 — Ab`, "\"...todoke ni yuku yo!\"", "Ab",
+              [{ tick: 0, dur: 4, notes: ["G#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 12, dur: 4, notes: ["C3"], fingers: [3] }],
+              [{ tick: 0, dur: 2, notes: ["A#4"], fingers: [5] }, { tick: 2, dur: 2, notes: ["G4"], fingers: [4] }, { tick: 4, dur: 2, notes: ["F4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D#4"], fingers: [2] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 12, dur: 4, notes: ["C4"], fingers: [1] }],
+              [{ tick: 0, dur: 2, note: "A#4" }, { tick: 2, dur: 2, note: "G4" }, { tick: 4, dur: 2, note: "F4" }, { tick: 6, dur: 2, note: "D#4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D#4" }, { tick: 12, dur: 4, note: "C4" }]
+            ),
+            // Comp. 24: Bb7
+            pdfBar(sec, `${prefix} Comp. 24 — Bb7`, "\"Umikaze kimakase...\"", "Bb7",
+              [{ tick: 0, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 4, dur: 4, notes: ["C3"], fingers: [3] }, { tick: 8, dur: 8, notes: ["D3"], fingers: [2] }],
+              [{ tick: 0, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 2, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 4, dur: 4, notes: ["C4"], fingers: [1] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 12, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 14, dur: 2, notes: ["G4"], fingers: [5] }],
+              [{ tick: 0, dur: 2, note: "C4" }, { tick: 2, dur: 2, note: "D#4" }, { tick: 4, dur: 4, note: "C4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D4" }, { tick: 12, dur: 2, note: "D#4" }, { tick: 14, dur: 2, note: "G4" }]
+            ),
+            // Comp. 25: F7 -> Bb7
+            pdfBar(sec, `${prefix} Comp. 25 — F7 → Bb7`, "\"...namimakase!\"", "F7 → Bb7",
+              [{ tick: 0, dur: 8, notes: ["A2", "C3"], fingers: [4, 2] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [3] }],
+              [{ tick: 0, dur: 2, notes: ["F4"], fingers: [4] }, { tick: 2, dur: 2, notes: ["F4"], fingers: [4] }, { tick: 4, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 8, dur: 4, notes: ["D#4"], fingers: [3] }, { tick: 12, dur: 4, notes: ["A#3", "D4"], fingers: [1, 2] }],
+              [{ tick: 0, dur: 2, note: "F4" }, { tick: 2, dur: 2, note: "F4" }, { tick: 4, dur: 2, note: "D#4" }, { tick: 6, dur: 2, note: "D4" }, { tick: 8, dur: 4, note: "D#4" }, { tick: 12, dur: 4, note: "D4" }]
+            ),
+            // Comp. 26: Eb
+            pdfBar(sec, `${prefix} Comp. 26 — Eb`, "\"Shio no mukou de...\"", "Eb",
+              [{ tick: 0, dur: 4, notes: ["D#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 12, dur: 4, notes: ["C3"], fingers: [3] }],
+              [{ tick: 0, dur: 2, notes: ["A#4"], fingers: [5] }, { tick: 2, dur: 2, notes: ["G4"], fingers: [4] }, { tick: 4, dur: 2, notes: ["F4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D#4"], fingers: [2] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 12, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 14, dur: 2, notes: ["C4"], fingers: [1] }],
+              [{ tick: 0, dur: 2, note: "A#4" }, { tick: 2, dur: 2, note: "G4" }, { tick: 4, dur: 2, note: "F4" }, { tick: 6, dur: 2, note: "D#4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D4" }, { tick: 12, dur: 2, note: "D#4" }, { tick: 14, dur: 2, note: "C4" }]
+            ),
+            // Comp. 27: Ab
+            pdfBar(sec, `${prefix} Comp. 27 — Ab`, "\"...yuuhi mo sawagu!\"", "Ab",
+              [{ tick: 0, dur: 4, notes: ["G#2"], fingers: [5] }, { tick: 4, dur: 4, notes: ["D#3"], fingers: [1] }, { tick: 8, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 12, dur: 4, notes: ["C3"], fingers: [3] }],
+              [{ tick: 0, dur: 2, notes: ["A#4"], fingers: [5] }, { tick: 2, dur: 2, notes: ["G4"], fingers: [4] }, { tick: 4, dur: 2, notes: ["F4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D#4"], fingers: [2] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 12, dur: 4, notes: ["C4"], fingers: [1] }],
+              [{ tick: 0, dur: 2, note: "A#4" }, { tick: 2, dur: 2, note: "G4" }, { tick: 4, dur: 2, note: "F4" }, { tick: 6, dur: 2, note: "D#4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D#4" }, { tick: 12, dur: 4, note: "C4" }]
+            ),
+            // Comp. 28: Bb7
+            pdfBar(sec, `${prefix} Comp. 28 — Bb7`, "\"Sora nya wa o kaku...\"", "Bb7",
+              [{ tick: 0, dur: 4, notes: ["D3"], fingers: [2] }, { tick: 4, dur: 4, notes: ["C3"], fingers: [3] }, { tick: 8, dur: 8, notes: ["D3"], fingers: [2] }],
+              [{ tick: 0, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 2, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 4, dur: 4, notes: ["C4"], fingers: [1] }, { tick: 8, dur: 2, notes: ["C4"], fingers: [1] }, { tick: 10, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 12, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 14, dur: 2, notes: ["G4"], fingers: [5] }],
+              [{ tick: 0, dur: 2, note: "C4" }, { tick: 2, dur: 2, note: "D#4" }, { tick: 4, dur: 4, note: "C4" }, { tick: 8, dur: 2, note: "C4" }, { tick: 10, dur: 2, note: "D4" }, { tick: 12, dur: 2, note: "D#4" }, { tick: 14, dur: 2, note: "G4" }]
+            ),
+            // Comp. 29: Bb7 -> Eb (To Coda)
+            pdfBar(sec, `${prefix} Comp. 29 — Bb7 → Eb (To Coda)`, "\"...tori no uta!\"", "Bb7 → Eb",
+              [{ tick: 0, dur: 4, notes: ["A2", "C3"], fingers: [4, 2] }, { tick: 4, dur: 4, notes: ["A#2", "C#3"], fingers: [3, 1] }, { tick: 8, dur: 4, notes: ["G2", "A#2"], fingers: [4, 2] }, { tick: 12, dur: 4, notes: ["D#2"], fingers: [5] }],
+              [{ tick: 0, dur: 2, notes: ["F4"], fingers: [4] }, { tick: 2, dur: 2, notes: ["D4"], fingers: [2] }, { tick: 4, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 6, dur: 2, notes: ["D#4"], fingers: [3] }, { tick: 8, dur: 8, notes: ["D#4"], fingers: [3] }],
+              [{ tick: 0, dur: 2, note: "F4" }, { tick: 2, dur: 2, note: "D4" }, { tick: 4, dur: 2, note: "D#4" }, { tick: 6, dur: 2, note: "D#4" }, { tick: 8, dur: 8, note: "D#4" }]
+            )
+          ];
+
+          return [
+            // 1. Intro Ragtime (Comp. 1–11)
+            ...introMeasures(1, "Intro"),
+            // 2. Yo-hohoho! + Ponte (Comp. 12–21)
+            ...coroBlock(2, "Coro", 12, true, false),
+            // 3. Verso Segno (Comp. 22–29)
+            ...versoBlock(3, "Verso 1"),
+            // 4. Interlúdio D.S. (Comp. 30–39 = Comp. 2–11 da partitura)
+            ...introMeasures(4, "Interlúdio").slice(1),
+            // 5. Retorno D.S. al Coda (Comp. 22–29 2ª vez)
+            ...versoBlock(5, "Verso 2 (D.S.)"),
+            // 6. Coda Final (Comp. 40–47 Casa 1 + Comp. 40–46 + Comp. 48 Casa 2)
+            ...coroBlock(6, "Coda (1ª Casa)", 40, false, false),
+            ...coroBlock(6, "Coda (2ª Casa Final)", 40, false, true)
+          ];
+        })()
+      ),
+      "sadness-sorrow": makeSongPack(
+        { title: "Sadness and Sorrow (Naruto) — Toshiro Masuda", info: "Tom: Em / G • 70 BPM • 4/4 (43 Comp. + Rep.)", defaultBpm: 70, presets: [52, 62, 70] },
+        [
+          { id: 1, name: "1. Intro & Tema A 1ª Volta (Comp. 1–11)" },
+          { id: 2, name: "2. Tema A 2ª Volta & Tema B (Comp. 3–22)" },
+          { id: 3, name: "3. Tema C Expressivo (Comp. 23–32)" },
+          { id: 4, name: "4. Clímax Oitavado & Final (Comp. 33–43)" }
+        ],
+        (() => {
+          const arpBar = (sec, title, lyric, ch, lhArp, rhMel, voice) => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: {
+              chord: ch, pedal: true,
+              tip: "Nível 1: segure o acorde na esquerda e toque apenas as notas principais da melodia.",
+              lh: [{ tick: 0, dur: 16, notes: [lhArp[0]], fingers: [5] }],
+              rh: rhMel.filter((_, i) => i % 2 === 0).map(n => ({ tick: n.tick, dur: Math.max(4, n.dur), notes: [n.note], fingers: [n.f] }))
+            },
+            medium: {
+              chord: ch, pedal: true,
+              tip: "Nível 2: arpejo em colcheias na esquerda + melodia expressiva na direita.",
+              lh: lhArp.map((n, i) => ({ tick: i * 2, dur: 2, notes: [n], fingers: [i % 2 === 0 ? 5 : 2] })),
+              rh: rhMel.map(n => ({ tick: n.tick, dur: n.dur, notes: [n.note], fingers: [n.f] }))
+            },
+            original: {
+              chord: ch, pedal: true,
+              tip: "Nível 3: arpejo contínuo de 8 colcheias da partitura + acordes arpejados.",
+              lh: lhArp.map((n, i) => ({ tick: i * 2, dur: 2, notes: [n], fingers: [i % 2 === 0 ? 5 : 1] })),
+              rh: rhMel.map(n => ({ tick: n.tick, dur: n.dur, notes: n.chord ? n.chord : [n.note], fingers: n.chord ? [1, 3, 5] : [n.f] }))
+            },
+            faithful: {
+              chord: ch, pedal: true,
+              tip: "Original Fiel (Toshiro Masuda): arpejo fluido com pedal limpo trocado a cada acorde.",
+              lh: lhArp.map((n, i) => ({ tick: i * 2, dur: 2, notes: [n], fingers: [i % 2 === 0 ? 5 : 2] })),
+              rh: rhMel.map(n => ({ tick: n.tick, dur: n.dur, notes: [n.note], fingers: [n.f] }))
+            }
+          });
+
+          const LH_EM = ["E3", "B3", "G4", "F#4", "E4", "D4", "B3", "G3"];
+          const LH_C = ["C3", "G3", "C4", "E4", "G4", "E4", "C4", "G3"];
+          const LH_D = ["D3", "A3", "D4", "F#4", "A4", "F#4", "D4", "A3"];
+          const LH_BM = ["B2", "F#3", "B3", "D4", "F#4", "D4", "B3", "F#3"];
+          const LH_G = ["G2", "D3", "G3", "B3", "D4", "B3", "G3", "D3"];
+          const LH_CLIMAX_EM = ["E2", "B2", "E3", "G3", "B3", "G3", "E3", "B2"];
+          const LH_CLIMAX_C = ["C2", "G2", "C3", "E3", "G3", "E3", "C3", "G2"];
+          const LH_CLIMAX_D = ["D2", "A2", "D3", "F#3", "A3", "F#3", "D3", "A2"];
+
+          const temaAPass = (sec, label, isSecondPass) => [
+            arpBar(sec, `${label} (Comp. 3) — Em`, "F#5 → E5 → B4 → E5 → F#5", "Em", LH_EM, [{ tick: 0, dur: 2, note: "F#5", f: 4 }, { tick: 2, dur: 2, note: "E5", f: 3 }, { tick: 4, dur: 8, note: "B4", f: 1 }, { tick: 12, dur: 2, note: "E5", f: 3 }, { tick: 14, dur: 2, note: "F#5", f: 4 }]),
+            arpBar(sec, `${label} (Comp. 4) — Cmaj7`, "G5 → D5 sustentado", "Cmaj7", LH_C, [{ tick: 0, dur: 4, note: "G5", f: 5 }, { tick: 4, dur: 12, note: "D5", f: 2 }]),
+            arpBar(sec, `${label} (Comp. 5) — D`, "F#5 → E5 → F#5 → G5 → B4", "D", LH_D, [{ tick: 0, dur: 8, note: "F#5", f: 4 }, { tick: 8, dur: 2, note: "E5", f: 3 }, { tick: 10, dur: 2, note: "F#5", f: 4 }, { tick: 12, dur: 2, note: "G5", f: 5 }, { tick: 14, dur: 2, note: "B4", f: 1 }]),
+            arpBar(sec, `${label} (Comp. 6) — Bm`, "Acordes arpejados em Si Menor", "Bm", LH_BM, [{ tick: 0, dur: 8, note: "D5", f: 4, chord: ["F#4", "B4", "D5"] }, { tick: 8, dur: 8, note: "B4", f: 3, chord: ["D4", "F#4", "B4"] }]),
+            arpBar(sec, `${label} (Comp. 7) — Em`, "F#5 → E5 → B4 → E5 → F#5", "Em", LH_EM, [{ tick: 0, dur: 2, note: "F#5", f: 4 }, { tick: 2, dur: 2, note: "E5", f: 3 }, { tick: 4, dur: 8, note: "B4", f: 1 }, { tick: 12, dur: 2, note: "E5", f: 3 }, { tick: 14, dur: 2, note: "F#5", f: 4 }]),
+            arpBar(sec, `${label} (Comp. 8) — Cmaj7`, "G5 → D5 sustentado", "Cmaj7", LH_C, [{ tick: 0, dur: 4, note: "G5", f: 5 }, { tick: 4, dur: 12, note: "D5", f: 2 }]),
+            arpBar(sec, `${label} (Comp. 9) — D`, "F#5 → E5 → F#5 → G5 → D5", "D", LH_D, [{ tick: 0, dur: 8, note: "F#5", f: 4 }, { tick: 8, dur: 2, note: "E5", f: 3 }, { tick: 10, dur: 2, note: "F#5", f: 4 }, { tick: 12, dur: 2, note: "G5", f: 5 }, { tick: 14, dur: 2, note: "D5", f: 1 }]),
+            arpBar(sec, `${label} (Comp. 10) — Em`, "Repouso melódico em E5", "Em", LH_EM, [{ tick: 0, dur: 16, note: "E5", f: 4 }]),
+            isSecondPass
+              ? arpBar(sec, `${label} (Casa 2 • Comp. 12) — Em`, "Subida preparando o Tema B (E5 → F#5 → G5)", "Em", LH_EM, [{ tick: 10, dur: 2, note: "E5", f: 2 }, { tick: 12, dur: 2, note: "F#5", f: 3 }, { tick: 14, dur: 2, note: "G5", f: 4 }])
+              : arpBar(sec, `${label} (Casa 1 • Comp. 11) — Em`, "Respiração do arpejo antes da repetição", "Em", LH_EM, [])
+          ];
+
+          return [
+            // 1. Intro + Tema A 1ª Volta
+            arpBar(1, "Intro (Comp. 1) — Em", "Arpejo inicial característico em Mi Menor (0:00)", "Em", LH_EM, []),
+            arpBar(1, "Intro (Comp. 2) — Em", "Segundo compasso de introdução", "Em", LH_EM, []),
+            ...temaAPass(1, "Tema A (1ª)", false),
+
+            // 2. Tema A 2ª Volta + Tema B (Comp. 13–22)
+            ...temaAPass(2, "Tema A (2ª)", true),
+            arpBar(2, "Tema B (Comp. 13) — C", "G5 → A5 → D5 → G5 → F#5 → E5", "C", LH_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "D5", f: 1 }, { tick: 8, dur: 4, note: "G5", f: 4 }, { tick: 12, dur: 2, note: "F#5", f: 3 }, { tick: 14, dur: 2, note: "E5", f: 2 }]),
+            arpBar(2, "Tema B (Comp. 14) — D", "Nota longa em F#5 sobre arpejo de Ré", "D", LH_D, [{ tick: 0, dur: 16, note: "F#5", f: 4 }]),
+            arpBar(2, "Tema B (Comp. 15) — C", "G5 → A5 → G5 → F#5 → G5 → A5", "C", LH_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "G5", f: 4 }, { tick: 8, dur: 4, note: "F#5", f: 3 }, { tick: 12, dur: 2, note: "G5", f: 4 }, { tick: 14, dur: 2, note: "A5", f: 5 }]),
+            arpBar(2, "Tema B (Comp. 16) — Bm", "Acordes arpejados em Si Menor", "Bm", LH_BM, [{ tick: 0, dur: 8, note: "F#5", f: 5, chord: ["B4", "D5", "F#5"] }, { tick: 8, dur: 8, note: "D5", f: 3, chord: ["G4", "B4", "D5"] }]),
+            arpBar(2, "Tema B (Comp. 17) — C", "G5 → A5 → D5 → G5 → F#5 → E5", "C", LH_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "D5", f: 1 }, { tick: 8, dur: 4, note: "G5", f: 4 }, { tick: 12, dur: 2, note: "F#5", f: 3 }, { tick: 14, dur: 2, note: "E5", f: 2 }]),
+            arpBar(2, "Tema B (Comp. 18) — D", "Repouso em F#5", "D", LH_D, [{ tick: 0, dur: 16, note: "F#5", f: 4 }]),
+            arpBar(2, "Tema B (Comp. 19) — C", "G5 → A5 → G5 → F#5 → B4", "C", LH_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "G5", f: 4 }, { tick: 8, dur: 4, note: "F#5", f: 3 }, { tick: 12, dur: 4, note: "B4", f: 1 }]),
+            arpBar(2, "Tema B (Comp. 20) — G", "D5 sustentado → B4 → D5", "G", LH_G, [{ tick: 0, dur: 12, note: "D5", f: 4 }, { tick: 12, dur: 2, note: "B4", f: 2 }, { tick: 14, dur: 2, note: "D5", f: 4 }]),
+            arpBar(2, "Tema B (Comp. 21) — Em", "Acorde cheio de Mi Menor + eco B4 → G4", "Em", LH_EM, [{ tick: 0, dur: 12, note: "E5", f: 5, chord: ["E4", "G4", "B4", "E5"] }, { tick: 12, dur: 2, note: "B4", f: 3 }, { tick: 14, dur: 2, note: "G4", f: 1 }]),
+            arpBar(2, "Tema B (Comp. 22–23) — Em", "Transição suave em Mi Menor", "Em", LH_EM, [{ tick: 0, dur: 16, note: "E4", f: 2, chord: ["E4", "G4", "B4"] }]),
+
+            // 3. Tema C Expressivo (Comp. 24–32)
+            arpBar(3, "Tema C (Comp. 24) — Em", "Entrada suave (mp): F#5 → E5 → B4 → E5 → F#5", "Em", LH_EM, [{ tick: 0, dur: 2, note: "F#5", f: 4 }, { tick: 2, dur: 2, note: "E5", f: 3 }, { tick: 4, dur: 8, note: "B4", f: 1 }, { tick: 12, dur: 2, note: "E5", f: 3 }, { tick: 14, dur: 2, note: "F#5", f: 4 }]),
+            arpBar(3, "Tema C (Comp. 25) — Cmaj7", "G5 → D5 → E5 → F#5 → G5", "Cmaj7", LH_C, [{ tick: 0, dur: 4, note: "G5", f: 5 }, { tick: 4, dur: 6, note: "D5", f: 2 }, { tick: 10, dur: 2, note: "E5", f: 3 }, { tick: 12, dur: 2, note: "F#5", f: 4 }, { tick: 14, dur: 2, note: "G5", f: 5 }]),
+            arpBar(3, "Tema C (Comp. 26) — D", "F#5 → E5 → F#5 → G5 → D5", "D", LH_D, [{ tick: 0, dur: 8, note: "F#5", f: 4 }, { tick: 8, dur: 2, note: "E5", f: 3 }, { tick: 10, dur: 2, note: "F#5", f: 4 }, { tick: 12, dur: 2, note: "G5", f: 5 }, { tick: 14, dur: 2, note: "D5", f: 1 }]),
+            arpBar(3, "Tema C (Comp. 27) — Bm", "Acordes arpejados subindo (D5 → E5)", "Bm", LH_BM, [{ tick: 0, dur: 8, note: "D5", f: 4, chord: ["F#4", "B4", "D5"] }, { tick: 8, dur: 8, note: "E5", f: 5, chord: ["G4", "B4", "E5"] }]),
+            arpBar(3, "Tema C (Comp. 28–32) — Em → C → D → Em", "Preparação crescente (mf) para o clímax", "Em → D", LH_EM, [{ tick: 0, dur: 2, note: "F#5", f: 4 }, { tick: 2, dur: 2, note: "E5", f: 3 }, { tick: 4, dur: 8, note: "B4", f: 1 }, { tick: 12, dur: 2, note: "E5", f: 3 }, { tick: 14, dur: 2, note: "F#5", f: 4 }]),
+
+            // 4. Clímax Oitavado & Final (Comp. 33–43)
+            arpBar(4, "Clímax (Comp. 33) — C", "Oitavas agudas (G5 → A5 → D5 → G5 → F#5 → E5)", "C", LH_CLIMAX_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "D5", f: 1 }, { tick: 8, dur: 4, note: "G5", f: 4 }, { tick: 12, dur: 2, note: "F#5", f: 3 }, { tick: 14, dur: 2, note: "E5", f: 2 }]),
+            arpBar(4, "Clímax (Comp. 34) — D", "Nota alta sustentada em F#5 com baixo grave D2", "D", LH_CLIMAX_D, [{ tick: 0, dur: 16, note: "F#5", f: 5 }]),
+            arpBar(4, "Clímax (Comp. 35) — C", "G5 → A5 → G5 → F#5 → G5 → A5", "C", LH_CLIMAX_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "G5", f: 4 }, { tick: 8, dur: 4, note: "F#5", f: 3 }, { tick: 12, dur: 2, note: "G5", f: 4 }, { tick: 14, dur: 2, note: "A5", f: 5 }]),
+            arpBar(4, "Clímax (Comp. 36) — Bm", "Acordes arpejados em Si Menor", "Bm", LH_BM, [{ tick: 0, dur: 8, note: "F#5", f: 5, chord: ["B4", "D5", "F#5"] }, { tick: 8, dur: 8, note: "D5", f: 3, chord: ["G4", "B4", "D5"] }]),
+            arpBar(4, "Clímax (Comp. 37–39) — C → D → C", "Segunda frase do clímax em oitavas", "C → D", LH_CLIMAX_C, [{ tick: 0, dur: 2, note: "G5", f: 4 }, { tick: 2, dur: 2, note: "A5", f: 5 }, { tick: 4, dur: 4, note: "G5", f: 4 }, { tick: 8, dur: 4, note: "F#5", f: 3 }, { tick: 12, dur: 4, note: "B4", f: 1 }]),
+            arpBar(4, "Clímax (Comp. 40) — G", "D5 sustentado → B4 → D5", "G", LH_G, [{ tick: 0, dur: 12, note: "D5", f: 4 }, { tick: 12, dur: 2, note: "B4", f: 2 }, { tick: 14, dur: 2, note: "D5", f: 4 }]),
+            arpBar(4, "Final (Comp. 41–42) — Em (rit.)", "Acorde arpejado em Em + subida suave B4 → E5 → G5 → B5", "Em", LH_CLIMAX_EM, [{ tick: 0, dur: 8, note: "E5", f: 5, chord: ["E4", "G4", "B4", "E5"] }, { tick: 8, dur: 4, note: "B4", f: 1 }, { tick: 12, dur: 2, note: "E5", f: 3 }, { tick: 14, dur: 2, note: "G5", f: 4 }]),
+            {
+              sectionId: 4, title: "Final (Comp. 43) — Em (Fermata)", lyric: "Acorde aberto final (E2–B2 | E4–G4–B4–E5) a J=30", voice: [],
+              easy: { chord: "Em (Final)", pedal: true, tip: "Acorde final sereno em Mi Menor.", lh: [{ tick: 0, dur: 16, notes: ["E2", "B2"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "B4"], fingers: [1, 2, 5] }] },
+              medium: { chord: "Em (Final)", pedal: true, tip: "Acorde aberto em Mi Menor com pedal sustentado.", lh: [{ tick: 0, dur: 16, notes: ["E2", "B2"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "B4", "E5"], fingers: [1, 2, 3, 5] }] },
+              original: { chord: "Em (Final)", pedal: true, tip: "Acorde aberto final da partitura com fermata.", lh: [{ tick: 0, dur: 16, notes: ["E2", "B2"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "B4", "E5"], fingers: [1, 2, 3, 5] }] },
+              faithful: { chord: "Em (Final)", pedal: true, tip: "Original Fiel: acorde final aberto de Mi Menor.", lh: [{ tick: 0, dur: 16, notes: ["E2", "B2"], fingers: [5, 1] }], rh: [{ tick: 0, dur: 16, notes: ["E4", "G4", "B4", "E5"], fingers: [1, 2, 3, 5] }] }
+            }
+          ];
+        })()
+      ),
+      "rocket-man": makeSongPack(
+        { title: "Rocket Man — Elton John", info: "Tom: Gm / Bb • 76 BPM • 4/4 (Verso, Refrão & Coda)", defaultBpm: 76, presets: [58, 68, 76] },
+        [
+          { id: 1, name: "1. Verso 1 (Comp. 1–4)" },
+          { id: 2, name: "2. Pré-Refrão 1 (Comp. 5–8)" },
+          { id: 3, name: "3. Verso 2 & Pré-Refrão 2 (Comp. 9–16)" },
+          { id: 4, name: "4. Refrão Completo (Comp. 17–24)" },
+          { id: 5, name: "5. Coda (Repeat and Fade)" }
+        ],
+        (() => {
+          // Helper combinando a partitura de piano do Elton John (Gm7 -> C9 com subida na ME) e a lead sheet
+          const rmGm7 = (sec, title, lyric, voice) => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: { chord: "Gm7", pedal: true, tip: "Nível 1: ME segura G2–D3; MD marca Gm7 (F4–G4–Bb4–D5).", lh: [{ tick: 0, dur: 16, notes: ["G2", "D3"], fingers: [5, 2] }], rh: [{ tick: 0, dur: 8, notes: ["F4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["F4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }] },
+            medium: { chord: "Gm7", pedal: true, tip: "Nível 2: balada clássica em colcheias na MD sobre G2–D3.", lh: [{ tick: 0, dur: 8, notes: ["G2", "D3"], fingers: [5, 2] }, { tick: 8, dur: 8, notes: ["G2", "D3"], fingers: [5, 2] }], rh: [0, 4, 8, 12].map(t => ({ tick: t, dur: 4, notes: ["F4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] })) },
+            original: { chord: "Gm7", pedal: true, tip: "Nível 3 (Partitura Elton John): acorde sustentado na ME (G2–Bb2–D3–F3) + motivo melódico F4–G4–Bb4–D5 na MD.", lh: [{ tick: 0, dur: 16, notes: ["G2", "A#2", "D3", "F3"], fingers: [5, 3, 2, 1] }], rh: [{ tick: 2, dur: 2, notes: ["F4"], fingers: [1] }, { tick: 4, dur: 2, notes: ["G4", "A#4"], fingers: [2, 3] }, { tick: 6, dur: 2, notes: ["F4"], fingers: [1] }, { tick: 8, dur: 2, notes: ["G4", "A#4"], fingers: [2, 3] }, { tick: 10, dur: 2, notes: ["F4"], fingers: [1] }, { tick: 12, dur: 2, notes: ["A#4", "D5"], fingers: [3, 5] }, { tick: 14, dur: 2, notes: ["G4"], fingers: [2] }] },
+            faithful: { chord: "Gm7", pedal: true, tip: "Original Fiel: balada de piano do Elton John com motivo melódico suave.", lh: [{ tick: 0, dur: 16, notes: ["G2", "D3", "F3"], fingers: [5, 2, 1] }], rh: [{ tick: 0, dur: 4, notes: ["F4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 4, dur: 4, notes: ["G4", "A#4"], fingers: [2, 3] }, { tick: 8, dur: 4, notes: ["F4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 12, dur: 4, notes: ["A#4", "D5"], fingers: [3, 5] }] }
+          });
+
+          const rmC9 = (sec, title, lyric, voice) => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: { chord: "C9", pedal: true, tip: "Nível 1: ME em C3–G3; MD em C9 (E4–G4–Bb4–D5).", lh: [{ tick: 0, dur: 16, notes: ["C3", "G3"], fingers: [5, 2] }], rh: [{ tick: 0, dur: 8, notes: ["E4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["E4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }] },
+            medium: { chord: "C9", pedal: true, tip: "Nível 2: marcação em 4 tempos em C9.", lh: [{ tick: 0, dur: 8, notes: ["C3", "G3"], fingers: [5, 2] }, { tick: 8, dur: 8, notes: ["C3", "G3"], fingers: [5, 2] }], rh: [0, 4, 8, 12].map(t => ({ tick: t, dur: 4, notes: ["E4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] })) },
+            original: { chord: "C9", pedal: true, tip: "Nível 3 (Partitura Comp. 2): arpejo ascendente característico na ME (C3 → E3 → G3 → Bb3) no final do compasso!", lh: [{ tick: 0, dur: 4, notes: ["C3", "E3", "G3"], fingers: [5, 3, 2] }, { tick: 4, dur: 4, notes: ["C3", "E3", "G3"], fingers: [5, 3, 2] }, { tick: 8, dur: 2, notes: ["C3"], fingers: [5] }, { tick: 10, dur: 2, notes: ["E3"], fingers: [4] }, { tick: 12, dur: 2, notes: ["G3"], fingers: [2] }, { tick: 14, dur: 2, notes: ["A#3"], fingers: [1] }], rh: [{ tick: 0, dur: 4, notes: ["G4", "A#4", "D5"], fingers: [1, 2, 4] }, { tick: 4, dur: 12, notes: ["A4", "C5", "E5"], fingers: [1, 2, 4] }] },
+            faithful: { chord: "C9", pedal: true, tip: "Original Fiel: inclui a subida clássica C3 → E3 → G3 → Bb3 da mão esquerda!", lh: [{ tick: 0, dur: 8, notes: ["C3", "G3"], fingers: [5, 2] }, { tick: 8, dur: 2, notes: ["C3"], fingers: [5] }, { tick: 10, dur: 2, notes: ["E3"], fingers: [4] }, { tick: 12, dur: 2, notes: ["G3"], fingers: [2] }, { tick: 14, dur: 2, notes: ["A#3"], fingers: [1] }], rh: [{ tick: 0, dur: 8, notes: ["E4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }, { tick: 8, dur: 8, notes: ["E4", "G4", "A#4", "D5"], fingers: [1, 2, 3, 5] }] }
+          });
+
+          const rmPre = (sec, title, lyric, ch, b1, b2, r1, r2, voice) => ({
+            sectionId: sec, title, lyric, voice: voice || [],
+            easy: { chord: ch, pedal: true, tip: "Nível 1: troca limpa nos tempos 1 e 3.", lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }], rh: [{ tick: 0, dur: 8, notes: r1, fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: r2, fingers: [1, 2, 5] }] },
+            medium: { chord: ch, pedal: true, tip: "Nível 2: pulsação em semínimas acompanhando a subida da voz.", lh: [{ tick: 0, dur: 4, notes: [b1], fingers: [5] }, { tick: 4, dur: 4, notes: [b1], fingers: [5] }, { tick: 8, dur: 4, notes: [b2], fingers: [5] }, { tick: 12, dur: 4, notes: [b2], fingers: [5] }], rh: [{ tick: 0, dur: 4, notes: r1, fingers: [1, 2, 5] }, { tick: 4, dur: 4, notes: r1, fingers: [1, 2, 5] }, { tick: 8, dur: 4, notes: r2, fingers: [1, 2, 5] }, { tick: 12, dur: 4, notes: r2, fingers: [1, 2, 5] }] },
+            original: { chord: ch, pedal: true, tip: "Nível 3: preenchimento rítmico estilo Elton John.", lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }], rh: [0, 4, 6, 8, 12, 14].map(t => ({ tick: t, dur: 2, notes: t < 8 ? r1 : r2, fingers: [1, 2, 5] })) },
+            faithful: { chord: ch, pedal: true, tip: "Original Fiel: mesma harmonia da partitura.", lh: [{ tick: 0, dur: 8, notes: [b1], fingers: [5] }, { tick: 8, dur: 8, notes: [b2], fingers: [5] }], rh: [{ tick: 0, dur: 4, notes: r1, fingers: [1, 2, 5] }, { tick: 4, dur: 4, notes: r1, fingers: [1, 2, 5] }, { tick: 8, dur: 4, notes: r2, fingers: [1, 2, 5] }, { tick: 12, dur: 4, notes: r2, fingers: [1, 2, 5] }] }
+          });
+
+          const V_V1 = [{ tick: 2, dur: 2, note: "F4" }, { tick: 4, dur: 2, note: "G4" }, { tick: 6, dur: 2, note: "G4" }, { tick: 8, dur: 2, note: "F4" }, { tick: 10, dur: 2, note: "G4" }, { tick: 12, dur: 4, note: "F4" }];
+          const V_V2 = [{ tick: 0, dur: 2, note: "G4" }, { tick: 2, dur: 2, note: "A4" }, { tick: 4, dur: 12, note: "A4" }];
+          const V_PRE1 = [{ tick: 2, dur: 2, note: "F4" }, { tick: 4, dur: 2, note: "G4" }, { tick: 6, dur: 2, note: "G4" }, { tick: 8, dur: 4, note: "A#4" }, { tick: 12, dur: 4, note: "D5" }];
+          const V_PRE2 = [{ tick: 0, dur: 8, note: "F5" }, { tick: 8, dur: 4, note: "D5" }, { tick: 12, dur: 4, note: "C5" }];
+          const V_CH1 = [{ tick: 2, dur: 2, note: "F4" }, { tick: 4, dur: 2, note: "G4" }, { tick: 6, dur: 2, note: "D5" }, { tick: 8, dur: 2, note: "C5" }, { tick: 10, dur: 2, note: "D5" }, { tick: 12, dur: 2, note: "C5" }, { tick: 14, dur: 2, note: "A#4" }];
+          const V_CH2 = [{ tick: 0, dur: 4, note: "G4" }, { tick: 4, dur: 4, note: "A#4" }, { tick: 8, dur: 4, note: "C5" }, { tick: 12, dur: 4, note: "D5" }];
+
+          return [
+            // 1. Verso 1 (Comp. 1–4)
+            rmGm7(1, "Verso 1 (Comp. 1) — Gm7", "\"She packed my bags last night...\"", V_V1),
+            rmC9(1, "Verso 1 (Comp. 2) — C9", "\"...pre-flight...\"", V_V2),
+            rmGm7(1, "Verso 1 (Comp. 3) — Gm7", "\"Zero hour...\"", V_V1),
+            rmC9(1, "Verso 1 (Comp. 4) — C9", "\"...nine A.M.\"", V_V2),
+
+            // 2. Pré-Refrão 1 (Comp. 5–8)
+            rmPre(2, "Pré-Refrão 1 (Comp. 5) — Eb → Bb", "\"And I'm gonna be high...\"", "Eb → Bb", "D#2", "A#2", ["G4", "A#4", "D#5"], ["F4", "A#4", "D5"], V_PRE1),
+            rmPre(2, "Pré-Refrão 1 (Comp. 6) — Cm → Cm7", "\"...as a kite...\"", "Cm → Cm7", "C3", "C3", ["G4", "C5", "D#5"], ["G4", "A#4", "D#5"], V_PRE2),
+            rmPre(2, "Pré-Refrão 1 (Comp. 7–8) — F", "\"...by then.\" (crescendo)", "F", "F2", "F2", ["F4", "A4", "C5"], ["F4", "A4", "C5"], [{ tick: 0, dur: 12, note: "A4" }]),
+
+            // 3. Verso 2 & Pré-Refrão 2 (Comp. 9–16)
+            rmGm7(3, "Verso 2 (Comp. 9) — Gm7", "\"I miss the earth so much, I miss my wife...\"", V_V1),
+            rmC9(3, "Verso 2 (Comp. 10) — C9", "\"...I miss my wife...\"", V_V2),
+            rmGm7(3, "Verso 2 (Comp. 11) — Gm7", "\"It's lonely out in space...\"", V_V1),
+            rmC9(3, "Verso 2 (Comp. 12) — C9", "\"...out in space...\"", V_V2),
+            rmPre(3, "Pré-Refrão 2 (Comp. 13) — Eb → Bb", "\"...on such a timeless...\"", "Eb → Bb", "D#2", "A#2", ["G4", "A#4", "D#5"], ["F4", "A#4", "D5"], V_PRE1),
+            rmPre(3, "Pré-Refrão 2 (Comp. 14–16) — Cm → Cm7", "\"...timeless flight.\"", "Cm → Cm7", "C3", "C3", ["G4", "C5", "D#5"], ["G4", "A#4", "D#5"], V_PRE2),
+
+            // 4. Refrão Completo (Comp. 17–24)
+            rmPre(4, "Refrão (Comp. 17) — Bb", "\"And I think it's gonna be a long, long time...\"", "Bb", "A#2", "F2", ["F4", "A#4", "D5"], ["F4", "A#4", "D5"], V_CH1),
+            rmPre(4, "Refrão (Comp. 18) — Eb", "\"...till touchdown brings me 'round again to find...\"", "Eb", "D#2", "A#2", ["G4", "A#4", "D#5"], ["G4", "A#4", "D#5"], V_CH2),
+            rmPre(4, "Refrão (Comp. 19) — Bb", "\"...I'm not the man they think I am at home.\"", "Bb", "A#2", "F2", ["F4", "A#4", "D5"], ["F4", "A#4", "D5"], V_CH1),
+            rmPre(4, "Refrão (Comp. 20–21) — Eb → Bb → C7", "\"Oh no, no, no, I'm a Rocket Man!\"", "Eb → Bb → C7", "D#2", "C3", ["G4", "A#4", "D#5"], ["E4", "A#4", "C5"], V_CH2),
+            rmPre(4, "Refrão (Comp. 22–24) — Gm7 → Eb → Bb", "\"Rocket Man, burning out his fuse up here alone...\"", "Gm7 → Eb → Bb", "G2", "A#2", ["F4", "G4", "A#4", "D5"], ["F4", "A#4", "D5"], V_CH1),
+
+            // 5. Coda (Repeat and Fade)
+            rmPre(5, "Coda (Comp. 42) — Eb", "\"And I think it's gonna be a long, long time...\"", "Eb", "D#2", "A#2", ["G4", "A#4", "D#5"], ["G4", "A#4", "D#5"], V_CH1),
+            rmPre(5, "Coda (Comp. 43) — Bb", "\"...long, long time...\"", "Bb", "A#2", "F2", ["F4", "A#4", "D5"], ["F4", "A#4", "D5"], V_CH2),
+            {
+              sectionId: 5, title: "Final (Comp. 44) — Eb → Bb (Repouso)", lyric: "Encerramento suave da balada em Si Bemol Maior", voice: [],
+              easy: { chord: "Eb → Bb (Final)", pedal: true, tip: "Repouso final em Si Bemol Maior.", lh: [{ tick: 0, dur: 8, notes: ["D#2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [3] }], rh: [{ tick: 0, dur: 8, notes: ["G4", "A#4", "D#5"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["F4", "A#4", "D5"], fingers: [1, 3, 5] }] },
+              medium: { chord: "Eb → Bb (Final)", pedal: true, tip: "Encerramento suave em Eb → Bb.", lh: [{ tick: 0, dur: 8, notes: ["D#2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [3] }], rh: [{ tick: 0, dur: 8, notes: ["G4", "A#4", "D#5"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["F4", "A#4", "D5"], fingers: [1, 3, 5] }] },
+              original: { chord: "Eb → Bb (Final)", pedal: true, tip: "Final clássico do Elton John descendo o baixo para F2 → Bb2.", lh: [{ tick: 0, dur: 8, notes: ["D#2"], fingers: [5] }, { tick: 8, dur: 4, notes: ["F2"], fingers: [5] }, { tick: 12, dur: 4, notes: ["A#2"], fingers: [2] }], rh: [{ tick: 0, dur: 8, notes: ["G4", "A#4", "D#5"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["F4", "A#4", "D5"], fingers: [1, 3, 5] }] },
+              faithful: { chord: "Eb → Bb (Final)", pedal: true, tip: "Original Fiel: repouso final em Si Bemol Maior.", lh: [{ tick: 0, dur: 8, notes: ["D#2"], fingers: [5] }, { tick: 8, dur: 8, notes: ["A#2"], fingers: [3] }], rh: [{ tick: 0, dur: 8, notes: ["G4", "A#4", "D#5"], fingers: [1, 2, 5] }, { tick: 8, dur: 8, notes: ["F4", "A#4", "D5"], fingers: [1, 3, 5] }] }
+            }
+          ];
+        })()
+      )
+    };
+
+    /* ==========================================================================
+       3. MOTOR DE ÁUDIO (SOUNDFONT GRAND PIANO + FALLBACK WEB AUDIO)
+       ========================================================================== */
+    let audioCtx = null;
+    let pianoInst = null;
+    let voiceInsts = {};
+
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    async function initSoundfont() {
+      const badge = document.getElementById("audio-engine-badge");
+      try {
+        const ctx = ensureAudioCtx();
+        if (window.Soundfont) {
+          pianoInst = await window.Soundfont.instrument(ctx, "acoustic_grand_piano", { soundfont: "MusyngKite" });
+          if (badge) badge.textContent = "🎹 Piano Acústico HD";
+          voiceInsts.rhodes = await window.Soundfont.instrument(ctx, "electric_piano_1", { soundfont: "MusyngKite" });
+          voiceInsts.oohs = await window.Soundfont.instrument(ctx, "choir_aahs", { soundfont: "MusyngKite" });
+        } else if (badge) {
+          badge.textContent = "🎹 Sintetizador WebAudio";
+        }
+      } catch (e) {
+        if (badge) badge.textContent = "🎹 Sintetizador WebAudio";
+      }
+    }
+
+    function playTone(noteId, durSec = 0.45, gainVal = 0.65, isVoice = false) {
+      const nObj = NOTE_MAP[noteId];
+      if (!nObj) return;
+      const ctx = ensureAudioCtx();
+      const now = ctx.currentTime;
+
+      if (isVoice) {
+        const timbre = document.getElementById("voice-timbre-select")?.value || "rhodes";
+        if (timbre === "rhodes" && voiceInsts.rhodes) {
+          voiceInsts.rhodes.play(noteId, now, { duration: durSec, gain: gainVal * 1.1 });
+          return;
+        }
+        if (timbre === "oohs" && voiceInsts.oohs) {
+          voiceInsts.oohs.play(noteId, now, { duration: durSec + 0.12, gain: gainVal * 1.1 });
+          return;
+        }
+      }
+      if (pianoInst) {
+        pianoInst.play(noteId, now, { duration: durSec, gain: gainVal });
+        return;
+      }
+      // Fallback WebAudio
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = isVoice ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(nObj.freq, now);
+      g.gain.setValueAtTime(0.001, now);
+      g.gain.linearRampToValueAtTime(gainVal * 0.28, now + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, now + durSec);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + durSec);
+    }
+
+    function playMetroClick(accent) {
+      const ctx = ensureAudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(accent ? 1200 : 880, now);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+
+    /* ==========================================================================
+       4. ESTADO GLOBAL & RENDERIZAÇÃO DE TECLADO + PARTITURA SVG
+       ========================================================================== */
+    const state = {
+      songId: "todo-no",
+      level: "faithful",
+      handMode: "both",
+      bpm: 76,
+      stepIndex: 0,
+      activeTick: -1,
+      frozenTick: -1,
+      zoomOneMeasure: true,
+      showCiphers: true,
+      showVoicePanel: false,
+      isPlaying: false,
+      playMode: "step",
+      timer: null
+    };
+
+    let SECTIONS = SONGS["todo-no"].sections;
+    let STEPS = SONGS["todo-no"].steps;
+
+    function buildPianoBed(containerId, notesList, isVoice) {
+      const bed = document.getElementById(containerId);
+      if (!bed) return;
+      bed.innerHTML = "";
+      const whites = notesList.filter(n => !n.isBlack);
+      const wPct = 100 / whites.length;
+
+      whites.forEach((n, i) => {
+        const el = document.createElement("div");
+        el.className = "w-key";
+        el.dataset.note = n.id;
+        el.style.left = (i * wPct) + "%";
+        el.style.width = wPct + "%";
+
+        const lbl = document.createElement("span");
+        lbl.className = "key-lbl";
+        lbl.textContent = n.id === "C4" ? "C4" : n.id.replace(/\d/, "");
+        el.appendChild(lbl);
+
+        el.addEventListener("pointerdown", () => {
+          ensureAudioCtx();
+          playTone(n.id, 0.5, 0.7, isVoice);
+        });
+        bed.appendChild(el);
+      });
+
+      notesList.forEach(n => {
+        if (!n.isBlack) return;
+        const prevWhiteIdx = whites.findIndex(w => w.midi === n.midi - 1);
+        if (prevWhiteIdx === -1) return;
+        const el = document.createElement("div");
+        el.className = "b-key";
+        el.dataset.note = n.id;
+        el.style.width = (wPct * 0.64) + "%";
+        el.style.left = ((prevWhiteIdx + 0.68) * wPct) + "%";
+
+        const lbl = document.createElement("span");
+        lbl.className = "key-lbl";
+        lbl.textContent = n.id.replace(/\d/, "");
+        el.appendChild(lbl);
+
+        el.addEventListener("pointerdown", e => {
+          e.stopPropagation();
+          ensureAudioCtx();
+          playTone(n.id, 0.5, 0.7, isVoice);
+        });
+        bed.appendChild(el);
+      });
+    }
+
+    function midiToTrebleY(midi) {
+      const stepsFromE4 = { 0: 0, 1: 0, 2: 1, 3: 1, 4: 2, 5: 3, 6: 3, 7: 4, 8: 4, 9: 5, 10: 5, 11: 6 };
+      const oct = Math.floor(midi / 12) - 1;
+      const deg = (oct - 4) * 7 + stepsFromE4[midi % 12] - 2;
+      return 118 - deg * 6.5;
+    }
+
+    function midiToBassY(midi) {
+      const stepsFromC = { 0: 0, 1: 0, 2: 1, 3: 1, 4: 2, 5: 3, 6: 3, 7: 4, 8: 4, 9: 5, 10: 5, 11: 6 };
+      const oct = Math.floor(midi / 12) - 1;
+      const deg = (oct - 2) * 7 + stepsFromC[midi % 12] - 4;
+      return 248 - deg * 6.5;
+    }
+
+    function drawSingleMeasureSVG(svg, step, x0, mWidth, isCurrent) {
+      const dark = document.documentElement.classList.contains("dark");
+      const lineCol = dark ? "#475569" : "#94a3b8";
+      const inkCol = dark ? "#f8fafc" : "#0f172a";
+      const mutedCol = dark ? "#cbd5e1" : "#64748b";
+      const lhCol = dark ? "#93c5fd" : "#1d4ed8";
+      const rhCol = dark ? "#6ee7b7" : "#047857";
+      const voxCol = dark ? "#fcd34d" : "#b45309";
+      const haloCol = dark ? "#0f172a" : "#ffffff";
+
+      const lv = step.levels[state.level] || step.levels.faithful;
+      const NS = "http://www.w3.org/2000/svg";
+      const addEl = (tag, attrs) => {
+        const el = document.createElementNS(NS, tag);
+        Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+        svg.appendChild(el);
+        return el;
+      };
+
+      // Linhas das 2 pautas (Clave de Sol e Clave de Fá)
+      for (let i = 0; i < 5; i++) {
+        addEl("line", { x1: x0, y1: 66 + i * 13, x2: x0 + mWidth, y2: 66 + i * 13, stroke: lineCol, "stroke-width": "1.2" });
+        addEl("line", { x1: x0, y1: 196 + i * 13, x2: x0 + mWidth, y2: 196 + i * 13, stroke: lineCol, "stroke-width": "1.2" });
+      }
+      // Barras verticais de compasso
+      addEl("line", { x1: x0, y1: 66, x2: x0, y2: 248, stroke: inkCol, "stroke-width": "2" });
+      addEl("line", { x1: x0 + mWidth, y1: 66, x2: x0 + mWidth, y2: 248, stroke: inkCol, "stroke-width": "2" });
+
+      // Título do compasso + acorde
+      addEl("text", { x: x0 + 14, y: 34, fill: inkCol, "font-size": "16", "font-weight": "800", "font-family": "JetBrains Mono, monospace" }).textContent = `${step.tag} • ${lv.chord}`;
+      if (lv.pedal) {
+        addEl("text", { x: x0 + mWidth - 48, y: 278, fill: mutedCol, "font-size": "12", "font-weight": "700", "font-family": "JetBrains Mono, monospace" }).textContent = "Ped.";
+      }
+
+      // Claves na margem esquerda
+      addEl("text", { x: x0 + 10, y: 112, fill: inkCol, "font-size": "44", "font-family": "serif" }).textContent = "𝄞";
+      addEl("text", { x: x0 + 10, y: 238, fill: inkCol, "font-size": "38", "font-family": "serif" }).textContent = "𝄢";
+
+      const padL = 56;
+      const usableW = mWidth - padL - 20;
+      const tickToX = t => x0 + padL + (t / 16) * usableW;
+
+      // Divisões suaves dos 4 tempos e áreas clicáveis
+      for (let b = 0; b < 4; b++) {
+        const bx = tickToX(b * 4);
+        if (b > 0) {
+          addEl("line", { x1: bx, y1: 54, x2: bx, y2: 256, stroke: lineCol, "stroke-width": "1", "stroke-dasharray": "4 4", opacity: "0.55" });
+        }
+        addEl("text", { x: bx + usableW / 8, y: 50, fill: mutedCol, "font-size": "11", "font-weight": "700", "text-anchor": "middle", "font-family": "JetBrains Mono, monospace" }).textContent = `T${b + 1}`;
+      }
+
+      // Playhead (linha vertical azul no tempo ativo)
+      const focusT = isCurrent ? (state.frozenTick >= 0 ? state.frozenTick : state.activeTick) : -1;
+      if (focusT >= 0) {
+        const px = tickToX(focusT);
+        addEl("rect", { x: px - 6, y: 52, width: usableW / 8, height: 206, fill: "#3b82f6", opacity: "0.14", rx: "6" });
+        addEl("line", { x1: px, y1: 52, x2: px, y2: 258, stroke: "#3b82f6", "stroke-width": "2.5" });
+      }
+
+      const drawEvents = (events, isTreble, color, isVox = false) => {
+        events.forEach(ev => {
+          const cx = tickToX(ev.tick) + 12;
+          const notes = isVox ? [ev.note] : ev.notes;
+          const fingers = isVox ? [] : ev.fingers;
+          notes.forEach((nId, idx) => {
+            const nObj = NOTE_MAP[nId];
+            if (!nObj) return;
+            const cy = isTreble ? midiToTrebleY(nObj.midi) : midiToBassY(nObj.midi);
+
+            // Linhas suplementares
+            if (isTreble && nObj.midi <= 60) {
+              addEl("line", { x1: cx - 11, y1: 131, x2: cx + 11, y2: 131, stroke: inkCol, "stroke-width": "1.3" });
+            }
+            if (!isTreble && nObj.midi <= 40) {
+              addEl("line", { x1: cx - 11, y1: 261, x2: cx + 11, y2: 261, stroke: inkCol, "stroke-width": "1.3" });
+            }
+
+            if (isVox) {
+              addEl("polygon", { points: `${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}`, fill: color });
+            } else {
+              addEl("ellipse", {
+                cx, cy, rx: "6.5", ry: "4.8",
+                fill: ev.dur >= 8 ? haloCol : color,
+                stroke: color,
+                "stroke-width": "2",
+                transform: `rotate(-18 ${cx} ${cy})`
+              });
+            }
+
+            // Rótulo de cifra + dedo
+            if (state.showCiphers && !isVox) {
+              const fTxt = fingers[idx] ? `(${fingers[idx]})` : "";
+              const lblStr = `${displayCipher(nId, lv.chord)}${fTxt}`;
+              const lx = cx + 10;
+              const ly = cy + 4;
+              addEl("rect", { x: lx - 2, y: ly - 10, width: lblStr.length * 6.8 + 4, height: 13, fill: haloCol, opacity: "0.88", rx: "3" });
+              addEl("text", { x: lx, y: ly, fill: color, "font-size": "11", "font-weight": "800", "font-family": "JetBrains Mono, monospace" }).textContent = lblStr;
+            }
+          });
+        });
+      };
+
+      if (state.handMode !== "lh") drawEvents(lv.rh, true, rhCol, false);
+      if (state.handMode !== "rh") drawEvents(lv.lh, false, lhCol, false);
+      if (state.showVoicePanel && step.voice?.length) drawEvents(step.voice, true, voxCol, true);
+
+      // Zonas clicáveis por colcheia para congelar/ouvir aquele instante
+      for (let e = 0; e < 8; e++) {
+        const hit = addEl("rect", {
+          x: tickToX(e * 2), y: 52, width: usableW / 8, height: 206,
+          fill: "transparent", style: "cursor: pointer;"
+        });
+        hit.addEventListener("click", () => {
+          if (!isCurrent) {
+            state.stepIndex = step.id - 1;
+          }
+          state.frozenTick = e * 2;
+          triggerTickAudio(STEPS[state.stepIndex], state.frozenTick);
+          renderMeasureView();
+        });
+      }
+    }
+
+    function renderSheetSVG() {
+      const svg = document.getElementById("sheet-svg");
+      if (!svg) return;
+      svg.innerHTML = "";
+      const cur = STEPS[state.stepIndex];
+      if (!cur) return;
+
+      if (state.zoomOneMeasure || state.stepIndex >= STEPS.length - 1) {
+        drawSingleMeasureSVG(svg, cur, 14, 932, true);
+      } else {
+        drawSingleMeasureSVG(svg, cur, 14, 460, true);
+        drawSingleMeasureSVG(svg, STEPS[state.stepIndex + 1], 486, 460, false);
+      }
+    }
+
+    function updateKeyboardsHighlight() {
+      const step = STEPS[state.stepIndex];
+      if (!step) return;
+      const lv = step.levels[state.level] || step.levels.faithful;
+      const focusT = state.frozenTick >= 0 ? state.frozenTick : state.activeTick;
+
+      document.querySelectorAll("#piano-bed .w-key, #piano-bed .b-key").forEach(k => {
+        k.classList.remove("lh-target", "rh-target", "now-playing");
+        k.querySelectorAll(".f-dot, .ord-tag").forEach(d => d.remove());
+      });
+
+      const applyHand = (events, cls) => {
+        if ((cls === "lh" && state.handMode === "rh") || (cls === "rh" && state.handMode === "lh")) return;
+        const isArpeggio = events.length >= 4 && new Set(events.map(e => e.notes[0])).size >= 3;
+        events.forEach((ev, idx) => {
+          const isNow = focusT >= 0 && focusT >= ev.tick && focusT < ev.tick + ev.dur;
+          ev.notes.forEach((nId, i) => {
+            const keyEl = document.querySelector(`#piano-bed [data-note="${nId}"]`);
+            if (!keyEl) return;
+            keyEl.classList.add(`${cls}-target`);
+            if (isNow) keyEl.classList.add("now-playing");
+            if (!keyEl.querySelector(`.f-dot.${cls}`) && ev.fingers[i]) {
+              const dot = document.createElement("div");
+              dot.className = `f-dot ${cls}`;
+              dot.textContent = ev.fingers[i];
+              if (cls === "rh") dot.style.right = "3px";
+              keyEl.appendChild(dot);
+            }
+            if (isArpeggio && idx < 6 && !keyEl.querySelector(".ord-tag")) {
+              const tag = document.createElement("div");
+              tag.className = "ord-tag";
+              tag.textContent = `${idx + 1}º`;
+              keyEl.appendChild(tag);
+            }
+          });
+        });
+      };
+
+      applyHand(lv.lh, "lh");
+      applyHand(lv.rh, "rh");
+
+      // Teclado da Voz
+      document.querySelectorAll("#voice-bed .w-key, #voice-bed .b-key").forEach(k => {
+        k.classList.remove("vox-target", "now-playing");
+        k.querySelectorAll(".f-dot").forEach(d => d.remove());
+      });
+      if (state.showVoicePanel && step.voice) {
+        step.voice.forEach(v => {
+          const keyEl = document.querySelector(`#voice-bed [data-note="${v.note}"]`);
+          if (!keyEl) return;
+          keyEl.classList.add("vox-target");
+          if (focusT >= 0 && focusT >= v.tick && focusT < v.tick + v.dur) keyEl.classList.add("now-playing");
+        });
+      }
+    }
+
+    function renderMeasureView() {
+      const step = STEPS[state.stepIndex];
+      if (!step) return;
+      const lv = step.levels[state.level] || step.levels.faithful;
+
+      document.getElementById("step-counter").textContent = `Compasso ${step.id} / ${STEPS.length}`;
+      document.getElementById("chord-badge").textContent = lv.chord;
+      document.getElementById("measure-badge").textContent = step.tag;
+      document.getElementById("step-title").textContent = step.title;
+      document.getElementById("step-lyric").textContent = step.lyric;
+      document.getElementById("step-tip").textContent = lv.tip;
+      document.getElementById("step-select").value = state.stepIndex;
+
+      document.getElementById("btn-prev").disabled = state.stepIndex === 0;
+      document.getElementById("btn-next").disabled = state.stepIndex === STEPS.length - 1;
+      document.getElementById("btn-unfreeze").classList.toggle("hidden", state.frozenTick < 0);
+
+      document.querySelectorAll(".sec-chip").forEach(c => {
+        const active = parseInt(c.dataset.sec, 10) === step.sectionId;
+        c.className = `sec-chip px-2.5 py-1 rounded-xl text-xs font-bold cursor-pointer transition ${active ? "bg-blue-600 text-white" : "card text-[var(--text-main)]"}`;
+      });
+
+      document.querySelectorAll(".tl-pill").forEach((p, idx) => {
+        p.className = `tl-pill px-2 py-0.5 rounded-lg text-[11px] font-mono-code font-bold cursor-pointer whitespace-nowrap ${idx === state.stepIndex ? "bg-emerald-600 text-white" : "card text-[var(--text-muted)]"}`;
+      });
+
+      renderSheetSVG();
+      updateKeyboardsHighlight();
+    }
+
+    /* ==========================================================================
+       5. MOTOR DE REPRODUÇÃO CONTÍNUA (COMPASSO / SEÇÃO / MÚSICA INTEIRA)
+       ========================================================================== */
+    function triggerTickAudio(step, tick) {
+      const lv = step.levels[state.level] || step.levels.faithful;
+      const secPerTick = (60 / state.bpm) / 4;
+
+      if (document.getElementById("chk-metro")?.checked && tick % 4 === 0) {
+        playMetroClick(tick === 0);
+      }
+      if (state.handMode !== "rh") {
+        lv.lh.filter(e => e.tick === tick).forEach(e => {
+          e.notes.forEach(n => playTone(n, Math.max(0.25, e.dur * secPerTick * 0.95), 0.72, false));
+        });
+      }
+      if (state.handMode !== "lh") {
+        lv.rh.filter(e => e.tick === tick).forEach(e => {
+          e.notes.forEach(n => playTone(n, Math.max(0.22, e.dur * secPerTick * 0.92), 0.78, false));
+        });
+      }
+      if (state.showVoicePanel && document.getElementById("chk-voice-audio")?.checked && step.voice) {
+        step.voice.filter(v => v.tick === tick).forEach(v => {
+          playTone(v.note, Math.max(0.25, v.dur * secPerTick * 0.95), 0.65, true);
+        });
+      }
+    }
+
+    function stopPlay(resetTick = true) {
+      state.isPlaying = false;
+      if (state.timer) {
+        clearInterval(state.timer);
+        state.timer = null;
+      }
+      if (resetTick) state.activeTick = -1;
+      document.getElementById("btn-play-song").textContent = "🎵 Música Inteira";
+      document.getElementById("btn-play-section").textContent = "▶▶ Seção";
+      document.getElementById("btn-play-step").textContent = "▶ Compasso";
+      renderMeasureView();
+    }
+
+    function startPlay(mode, keepCurrentTick = false) {
+      if (state.isPlaying && !keepCurrentTick && state.playMode === mode) {
+        stopPlay(true);
+        return;
+      }
+      if (state.timer) clearInterval(state.timer);
+      ensureAudioCtx();
+      state.isPlaying = true;
+      state.playMode = mode;
+      state.frozenTick = -1;
+
+      if (!keepCurrentTick) {
+        state.activeTick = 0;
+        triggerTickAudio(STEPS[state.stepIndex], 0);
+      }
+
+      document.getElementById("btn-play-song").textContent = mode === "song" ? "⏸ Pausar" : "🎵 Música Inteira";
+      document.getElementById("btn-play-section").textContent = mode === "section" ? "⏸ Pausar" : "▶▶ Seção";
+      document.getElementById("btn-play-step").textContent = mode === "step" ? "⏸ Pausar" : "▶ Compasso";
+      renderMeasureView();
+
+      const tickMs = ((60 / state.bpm) / 4) * 1000;
+      state.timer = setInterval(() => {
+        state.activeTick++;
+        if (state.activeTick >= 16) {
+          state.activeTick = 0;
+          const loop = document.getElementById("chk-loop")?.checked;
+          const curStep = STEPS[state.stepIndex];
+
+          if (state.playMode === "step") {
+            if (!loop) { stopPlay(true); return; }
+          } else if (state.playMode === "section") {
+            const nextStep = STEPS[state.stepIndex + 1];
+            if (nextStep && nextStep.sectionId === curStep.sectionId) {
+              state.stepIndex++;
+            } else if (loop) {
+              state.stepIndex = STEPS.findIndex(s => s.sectionId === curStep.sectionId);
+            } else {
+              stopPlay(true);
+              return;
+            }
+          } else if (state.playMode === "song") {
+            if (state.stepIndex < STEPS.length - 1) {
+              state.stepIndex++;
+            } else if (loop) {
+              state.stepIndex = 0;
+            } else {
+              stopPlay(true);
+              return;
+            }
+          }
+        }
+        triggerTickAudio(STEPS[state.stepIndex], state.activeTick);
+        renderMeasureView();
+      }, tickMs);
+    }
+
+    /* ==========================================================================
+       6. INICIALIZAÇÃO E EVENTOS DE UI
+       ========================================================================== */
+    function buildTimelineOnce() {
+      const tabBox = document.getElementById("section-tabs");
+      const tlBox = document.getElementById("timeline-strip");
+      tabBox.innerHTML = "";
+      tlBox.innerHTML = "";
+
+      SECTIONS.forEach(sec => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.sec = sec.id;
+        btn.className = "sec-chip px-2.5 py-1 rounded-xl text-xs font-bold card cursor-pointer";
+        btn.textContent = sec.name;
+        btn.addEventListener("click", () => {
+          const idx = STEPS.findIndex(s => s.sectionId === sec.id);
+          if (idx !== -1) {
+            state.stepIndex = idx;
+            state.frozenTick = -1;
+            if (state.isPlaying) state.activeTick = 0;
+            renderMeasureView();
+          }
+        });
+        tabBox.appendChild(btn);
+      });
+
+      STEPS.forEach((st, idx) => {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "tl-pill px-2 py-0.5 rounded-lg text-[11px] font-mono-code font-bold card cursor-pointer";
+        pill.textContent = `${st.id}`;
+        pill.title = `${st.tag} — ${st.title}`;
+        pill.addEventListener("click", () => {
+          state.stepIndex = idx;
+          state.frozenTick = -1;
+          if (state.isPlaying) state.activeTick = 0;
+          renderMeasureView();
+        });
+        tlBox.appendChild(pill);
+      });
+    }
+
+    function applySongPack(songId) {
+      if (!SONGS[songId]) return;
+      if (state.isPlaying) stopPlay(true);
+      state.songId = songId;
+      const pack = SONGS[songId];
+      SECTIONS = pack.sections;
+      STEPS = pack.steps;
+      state.stepIndex = 0;
+      state.activeTick = -1;
+      state.frozenTick = -1;
+
+      document.getElementById("song-meta-tag").textContent = pack.meta.info;
+
+      const sel = document.getElementById("step-select");
+      sel.innerHTML = "";
+      SECTIONS.forEach(sec => {
+        const grp = document.createElement("optgroup");
+        grp.label = sec.name;
+        STEPS.forEach((st, i) => {
+          if (st.sectionId !== sec.id) return;
+          const opt = document.createElement("option");
+          opt.value = i;
+          opt.textContent = `${st.tag} — ${st.title}`;
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      });
+
+      const presetWrap = document.getElementById("bpm-presets");
+      presetWrap.innerHTML = "";
+      pack.meta.presets.forEach(b => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "px-2 py-1 rounded-lg text-[11px] font-mono-code font-bold card text-[var(--text-main)] cursor-pointer";
+        btn.textContent = String(b);
+        btn.addEventListener("click", () => setBpm(b));
+        presetWrap.appendChild(btn);
+      });
+
+      setBpm(pack.meta.defaultBpm);
+      buildTimelineOnce();
+      renderMeasureView();
+    }
+
+    function setBpm(v) {
+      state.bpm = v;
+      document.getElementById("bpm-slider").value = v;
+      document.getElementById("bpm-text").textContent = `${v} BPM`;
+      if (state.isPlaying) startPlay(state.playMode, true);
+    }
+
+    function updateHandButtons() {
+      document.querySelectorAll(".hand-btn").forEach(btn => {
+        const active = btn.dataset.hand === state.handMode;
+        btn.className = `hand-btn px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${active ? "bg-blue-600 text-white shadow-sm" : "text-[var(--text-main)] hover:opacity-80"}`;
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      buildPianoBed("piano-bed", PIANO_NOTES, false);
+      buildPianoBed("voice-bed", VOICE_NOTES, true);
+      updateHandButtons();
+
+      // Tema inicial
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.classList.add("dark");
+      }
+
+      document.getElementById("song-select").addEventListener("change", e => applySongPack(e.target.value));
+      document.getElementById("level-select").addEventListener("change", e => {
+        state.level = e.target.value;
+        renderMeasureView();
+      });
+
+      document.getElementById("btn-play-song").addEventListener("click", () => startPlay("song"));
+      document.getElementById("btn-play-section").addEventListener("click", () => startPlay("section"));
+      document.getElementById("btn-play-step").addEventListener("click", () => startPlay("step"));
+
+      document.getElementById("btn-prev").addEventListener("click", () => {
+        if (state.stepIndex > 0) {
+          state.stepIndex--;
+          state.frozenTick = -1;
+          renderMeasureView();
+        }
+      });
+      document.getElementById("btn-next").addEventListener("click", () => {
+        if (state.stepIndex < STEPS.length - 1) {
+          state.stepIndex++;
+          state.frozenTick = -1;
+          renderMeasureView();
+        }
+      });
+      document.getElementById("step-select").addEventListener("change", e => {
+        state.stepIndex = parseInt(e.target.value, 10);
+        state.frozenTick = -1;
+        renderMeasureView();
+      });
+
+      document.getElementById("btn-sheet-zoom").addEventListener("click", e => {
+        state.zoomOneMeasure = !state.zoomOneMeasure;
+        e.target.textContent = state.zoomOneMeasure ? "🔍 Zoom: 1 Compasso" : "📄 2 Compassos";
+        renderSheetSVG();
+      });
+
+      document.getElementById("chk-notes-on-sheet").addEventListener("change", e => {
+        state.showCiphers = e.target.checked;
+        renderSheetSVG();
+      });
+
+      document.getElementById("btn-unfreeze").addEventListener("click", () => {
+        state.frozenTick = -1;
+        renderMeasureView();
+      });
+
+      document.getElementById("btn-toggle-voice").addEventListener("click", () => {
+        state.showVoicePanel = !state.showVoicePanel;
+        document.getElementById("voice-keyboard-panel").classList.toggle("hidden", !state.showVoicePanel);
+        document.getElementById("legend-voice-pill").classList.toggle("hidden", !state.showVoicePanel);
+        renderMeasureView();
+      });
+
+      document.getElementById("btn-toggle-map").addEventListener("click", () => {
+        document.getElementById("sections-drawer").classList.toggle("hidden");
+      });
+
+      document.getElementById("btn-focus").addEventListener("click", () => {
+        document.body.classList.toggle("focus-mode");
+      });
+
+      document.getElementById("btn-theme").addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        renderSheetSVG();
+      });
+
+      document.querySelectorAll(".hand-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.handMode = btn.dataset.hand;
+          updateHandButtons();
+          renderMeasureView();
+        });
+      });
+
+      document.getElementById("bpm-slider").addEventListener("input", e => setBpm(parseInt(e.target.value, 10)));
+
+      document.addEventListener("keydown", e => {
+        if (["SELECT", "INPUT"].includes(document.activeElement?.tagName)) return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          state.isPlaying ? stopPlay(true) : startPlay("song");
+        } else if (e.code === "ArrowRight" && state.stepIndex < STEPS.length - 1) {
+          state.stepIndex++;
+          state.frozenTick = -1;
+          renderMeasureView();
+        } else if (e.code === "ArrowLeft" && state.stepIndex > 0) {
+          state.stepIndex--;
+          state.frozenTick = -1;
+          renderMeasureView();
+        } else if (e.key === "f" || e.key === "F") {
+          document.body.classList.toggle("focus-mode");
+        }
+      });
+
+      applySongPack("todo-no");
+      initSoundfont();
+    });
+  </script>
+</body>
+</html>
