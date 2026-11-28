@@ -191,17 +191,67 @@ class AudiverisTranscriptionServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "raises Error on execution timeout" do
-    with_fake_audiveris("sleep 1") do |bin_path|
+  test "raises Error on execution timeout and terminates orphan child processes cleanly" do
+    pid_file = File.join(Dir.tmpdir, "audiveris_timeout_test_#{Process.pid}.pid")
+    File.delete(pid_file) if File.exist?(pid_file)
+
+    script = <<~SH
+      sleep 10 &
+      echo $! > "#{pid_file}"
+      wait
+    SH
+
+    with_fake_audiveris(script) do |bin_path|
       err = assert_raises(AudiverisTranscriptionService::Error) do
         AudiverisTranscriptionService.call(
           input_bytes: "%PDF-1.4",
           filename: "slow.pdf",
           bin: bin_path,
-          timeout: 0.1
+          timeout: 0.25
         )
       end
       assert_match(/timed out/i, err.message)
+    end
+
+    if File.exist?(pid_file)
+      child_pid = File.read(pid_file).to_i
+      File.delete(pid_file)
+      sleep 0.1
+      alive = begin
+        Process.kill(0, child_pid)
+        true
+      rescue Errno::ESRCH, Errno::EPERM
+        false
+      end
+      assert_not alive, "Expected child process #{child_pid} in process group to be terminated on timeout"
+    end
+  end
+
+  test "prefers the largest exported movement score when Audiveris emits multiple files" do
+    script = <<~SH
+      out_dir=""
+      while [[ $# -gt 0 ]]; do
+        if [[ "$1" == "-output" ]]; then
+          out_dir="$2"
+          shift 2
+        else
+          shift
+        fi
+      done
+      echo "<score-partwise/>" > "$out_dir/a_tiny_cover.musicxml"
+      cat << 'EOF' > "$out_dir/z_full_score.musicxml"
+      #{sample_musicxml}
+      EOF
+    SH
+
+    with_fake_audiveris(script) do |bin_path|
+      result = AudiverisTranscriptionService.call(
+        input_bytes: "%PDF-1.4 fake",
+        filename: "multi.pdf",
+        bin: bin_path
+      )
+
+      assert_equal "z_full_score.musicxml", result.filename
     end
   end
 end

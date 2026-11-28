@@ -202,4 +202,69 @@ class MusicImporterServiceTest < ActiveSupport::TestCase
     # Tied stop note should not trigger a duplicate strike in RH
     assert_equal 1, step.dig("levels", "original", "rh").size
   end
+
+  test "solves ergonomic melody fingerings across measures instead of assigning all 1s" do
+    xml = <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <score-partwise version="3.1">
+        <work><work-title>Rocket Motif</work-title></work>
+        <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+        <part id="P1">
+          <measure number="1">
+            <attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves></attributes>
+            <note><pitch><step>B</step><alter>-1</alter><octave>4</octave></pitch><duration>4</duration><staff>1</staff></note>
+            <note><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><staff>1</staff></note>
+            <note><pitch><step>B</step><alter>-1</alter><octave>4</octave></pitch><duration>4</duration><staff>1</staff></note>
+            <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><staff>1</staff></note>
+            <backup><duration>16</duration></backup>
+            <note><pitch><step>G</step><octave>3</octave></pitch><duration>8</duration><staff>2</staff></note>
+            <note><pitch><step>D</step><octave>4</octave></pitch><duration>8</duration><staff>2</staff></note>
+          </measure>
+        </part>
+      </score-partwise>
+    XML
+
+    payload = MusicImporterService.call(content: xml, filename: "rocket.musicxml", slug: "rocket-motif")
+    assert Songs::SchemaValidator.validate(payload).valid?
+
+    rh_fingers = payload.dig("steps", 0, "levels", "original", "rh").map { |e| e["fingers"].first }
+    assert_operator rh_fingers.uniq.size, :>=, 3, "Expected varied ergonomic RH fingers, got #{rh_fingers.inspect}"
+    assert_not_equal 1, rh_fingers.first, "Thumb should avoid black key A#4"
+  end
+
+  test "handles dense 7-note chords, out-of-range pitches, zero beat-type OMR noise, and corrupt MXL safely" do
+    noisy_xml = <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <score-partwise version="3.1">
+        <work><work-title>Noisy OMR</work-title></work>
+        <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+        <part id="P1">
+          <measure number="1">
+            <attributes><divisions>4</divisions><time><beats>4</beats><beat-type>0</beat-type></time><staves>2</staves></attributes>
+            <note><pitch><step>C</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>D</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>F</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>G</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>A</step><octave>4</octave></pitch><duration>16</duration><staff>1</staff></note>
+            <note><chord/><pitch><step>D</step><octave>6</octave></pitch><duration>16</duration><staff>1</staff></note>
+          </measure>
+        </part>
+      </score-partwise>
+    XML
+
+    payload = MusicImporterService.call(content: noisy_xml, filename: "noisy.musicxml", slug: "noisy-omr")
+    validation = Songs::SchemaValidator.validate(payload)
+    assert validation.valid?, "Expected valid schema even on noisy OMR, got: #{validation.errors.join(', ')}"
+
+    rh_event = payload.dig("steps", 0, "levels", "original", "rh", 0)
+    assert_operator rh_event["notes"].size, :<=, 5
+    assert_equal rh_event["notes"].size, rh_event["fingers"].size
+    # D6 should fold down an octave to D5 rather than clamping to C6
+    assert_includes rh_event["notes"], "D5"
+
+    assert_raises(ArgumentError) do
+      MusicImporterService.call(content: "PK\x03\x04not_a_real_zip", filename: "corrupt.mxl", slug: "corrupt")
+    end
+  end
 end

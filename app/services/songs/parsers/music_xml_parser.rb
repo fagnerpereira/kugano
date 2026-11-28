@@ -190,6 +190,8 @@ module Songs
           }
         end
 
+        PianoFingeringSolver.solve_song_steps!(steps)
+
         key_name = mode == "minor" ? FIFTHS_MINOR.fetch(fifths, "Am") : FIFTHS_MAJOR.fetch(fifths, "C")
         time_sig = "#{beats}/#{beat_type}"
         presets = [ [ bpm - 20, 36 ].max, [ bpm - 10, 40 ].max, bpm ].uniq
@@ -240,20 +242,20 @@ module Songs
       def finalize_hand_buckets(bucket_map, hand:)
         bucket_map.values.sort_by { |b| b["tick"] }.map do |bucket|
           sorted_pairs = bucket["pairs"].uniq { |p| p[1] }.sort_by { |p| p[0] }
-          notes = sorted_pairs.map { |p| p[1] }
-          explicit_fingers = sorted_pairs.map { |p| p[2] }
-          fingers = if explicit_fingers.all?(&:present?)
-            explicit_fingers
-          else
-            Songs::LevelConnector.assign_fingers(notes, hand: hand)
-          end
+          raw_notes = sorted_pairs.map { |p| p[1] }
+          raw_explicit = sorted_pairs.map { |p| p[2] }
+          notes, explicit_fingers = PianoFingeringSolver.cap_playable_notes(raw_notes, raw_explicit)
+          has_explicit = explicit_fingers.is_a?(Array) && explicit_fingers.size == notes.size && explicit_fingers.all?(&:present?)
+          fingers = has_explicit ? explicit_fingers : Songs::LevelConnector.assign_fingers(notes, hand: hand)
 
-          {
+          event = {
             "tick" => bucket["tick"],
             "dur" => bucket["dur"],
             "notes" => notes,
             "fingers" => fingers
           }
+          event["explicit_fingers"] = true if has_explicit
+          event
         end
       end
 

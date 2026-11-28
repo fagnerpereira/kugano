@@ -87,11 +87,14 @@
     <%= form_with scope: :song, url: import_songs_path, method: :post, multipart: true, id: "import-song-form", class: "flex flex-wrap items-center gap-2 text-xs" do |f| %>
       <span class="font-extrabold text-[var(--text-main)]">Importar Partitura/MIDI (100% Determinístico via Solid Queue):</span>
       <%= f.text_field :title, placeholder: "Título da música (opcional)", class: "subtle rounded-lg px-2.5 py-1 text-xs font-semibold text-[var(--text-main)]" %>
-      <%= f.file_field :source_file, accept: ".musicxml,.xml,.mxl,.mid,.midi,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.wav,.mp3", class: "subtle rounded-lg px-2 py-1 text-xs text-[var(--text-main)] cursor-pointer" %>
+      <%= f.file_field :source_file, accept: ".musicxml,.xml,.mxl,.mid,.midi,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.wav,.mp3,.webm,.ogg,.m4a,.flac,.opus", class: "subtle rounded-lg px-2 py-1 text-xs text-[var(--text-main)] cursor-pointer" %>
       <%= f.text_field :sheets, placeholder: "Páginas (ex: 1-4)", class: "subtle rounded-lg px-2 py-1 text-xs font-semibold text-[var(--text-main)] w-32" %>
       <%= f.select :ocr_language, [["OCR: Inglês", "eng"], ["OCR: Português", "por"], ["OCR: EN + PT", "eng+por"]], { selected: "eng" }, class: "subtle rounded-lg px-2 py-1 text-xs font-semibold text-[var(--text-main)] cursor-pointer" %>
-      <%= f.text_field :source_url, placeholder: "ou URL de Áudio/YouTube", class: "subtle rounded-lg px-2.5 py-1 text-xs font-semibold text-[var(--text-main)]" %>
+      <%= f.text_field :source_url, placeholder: "ou URL do YouTube / Áudio", class: "subtle rounded-lg px-2.5 py-1 text-xs font-semibold text-[var(--text-main)]" %>
       <%= f.submit "Processar Partitura", class: "px-3 py-1 rounded-lg font-extrabold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition" %>
+      <button type="button" id="btn-mic-record" class="px-3 py-1 rounded-lg font-extrabold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition" title="Capturar música tocando no Spotify/YouTube pelo microfone">
+        🎙️ Gravar Microfone
+      </button>
       <span id="import-status-badge" class="font-mono-code text-[11px] font-bold text-[var(--text-muted)]">
         <% if local_assigns[:importing_song]&.processing? %>
           ⏳ Transcrevendo "<%= importing_song.title %>" no Solid Queue...

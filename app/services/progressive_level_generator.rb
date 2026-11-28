@@ -15,10 +15,19 @@ class ProgressiveLevelGenerator
     5 => [ 1, 2, 3, 4, 5 ]
   }.freeze
 
+  # Assigns deterministic fallback fingers (1..5) for a single isolated chord/event.
+  # Caps chords larger than 5 notes cleanly so fingers always match notes length.
   def self.assign_fingers(notes, hand: :rh)
-    count = Array(notes).size.clamp(1, 5)
+    n_size = Array(notes).size
+    return [] if n_size.zero?
+
+    count = n_size.clamp(1, 5)
     template = hand == :lh ? LH_FINGERS[count] : RH_FINGERS[count]
-    template.first(Array(notes).size)
+    if n_size <= 5
+      template.first(n_size)
+    else
+      template + Array.new(n_size - 5, hand == :lh ? 1 : 5)
+    end
   end
 
   def self.ensure_fingers(notes, fingers, hand: :rh)
@@ -172,27 +181,34 @@ class ProgressiveLevelGenerator
 
   def self.normalize_events(events, hand:, ticks_per_measure: 32)
     max_ticks = ticks_per_measure.to_i.clamp(4, 32)
-    Array(events).map do |ev|
+    Array(events).filter_map do |ev|
       e = ev.deep_stringify_keys
-      notes = Array(e["notes"]).map(&:to_s)
-      {
+      raw_notes = Array(e["notes"]).map(&:to_s).reject(&:empty?)
+      next if raw_notes.empty?
+
+      notes, raw_fingers = PianoFingeringSolver.cap_playable_notes(raw_notes, e["fingers"])
+      event = {
         "tick" => e["tick"].to_i.clamp(0, max_ticks - 1),
         "dur" => e["dur"].to_i.clamp(1, max_ticks),
         "notes" => notes,
-        "fingers" => ensure_fingers(notes, e["fingers"], hand: hand)
+        "fingers" => ensure_fingers(notes, raw_fingers, hand: hand)
       }
+      event["explicit_fingers"] = true if e["explicit_fingers"]
+      event
     end.sort_by { |e| e["tick"] }
   end
 
   def self.deep_copy(events)
     Array(events).map do |ev|
       e = ev.deep_stringify_keys
-      {
+      copy = {
         "tick" => e["tick"],
         "dur" => e["dur"],
         "notes" => Array(e["notes"]).dup,
         "fingers" => Array(e["fingers"]).dup
       }
+      copy["explicit_fingers"] = true if e["explicit_fingers"]
+      copy
     end
   end
 

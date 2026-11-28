@@ -153,10 +153,10 @@ class SongsController < ApplicationController
       "midi"
     when ".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff"
       "pdf_omr"
-    when ".mp3", ".wav", ".ogg", ".flac", ".m4a"
+    when ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".webm", ".opus", ".aac"
       "audio_youtube"
     else
-      "musicxml"
+      uploaded.respond_to?(:content_type) && uploaded.content_type.to_s.start_with?("audio/") ? "audio_youtube" : "musicxml"
     end
   end
 

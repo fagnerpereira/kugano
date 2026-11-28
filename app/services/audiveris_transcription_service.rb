@@ -1,5 +1,4 @@
 require "open3"
-require "timeout"
 
 # = Overview
 #
@@ -164,16 +163,39 @@ class AudiverisTranscriptionService
   end
 
   def locate_exported_score(output_dir)
-    Dir.glob(File.join(output_dir, "**", "*.{mxl,musicxml}")).sort.first ||
-      Dir.glob(File.join(output_dir, "**", "*.xml")).sort.first
+    primary = Dir.glob(File.join(output_dir, "**", "*.{mxl,musicxml}"))
+    candidates = primary.any? ? primary : Dir.glob(File.join(output_dir, "**", "*.xml"))
+    return nil if candidates.empty?
+
+    # Prefer the largest exported movement/score file so multi-movement scores do not
+    # accidentally pick a tiny cover or header movement.
+    candidates.max_by { |path| [ File.size(path), path ] }
   end
 
   def run_with_timeout(audiveris_bin, output_dir, input_path)
     cmd = build_command(audiveris_bin, output_dir, input_path)
-    Timeout.timeout(@timeout) do
-      Open3.capture3(*cmd)
+    Open3.popen3(*cmd, pgroup: true) do |stdin, stdout, stderr, wait_thr|
+      stdin.close
+      out_reader = Thread.new { stdout.read.to_s }
+      err_reader = Thread.new { stderr.read.to_s }
+
+      unless wait_thr.join(@timeout)
+        terminate_process_group(wait_thr.pid)
+        out_reader.join(1)
+        err_reader.join(1)
+        raise Error, "Audiveris OMR execution timed out after #{@timeout}s"
+      end
+
+      [ out_reader.value, err_reader.value, wait_thr.value ]
     end
-  rescue Timeout::Error
-    raise Error, "Audiveris OMR execution timed out after #{@timeout}s"
+  end
+
+  def terminate_process_group(pid)
+    pgid = -pid
+    Process.kill("TERM", pgid)
+    sleep 0.2
+    Process.kill("KILL", pgid)
+  rescue Errno::ESRCH, Errno::EPERM
+    nil
   end
 end

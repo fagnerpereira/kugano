@@ -108,6 +108,8 @@ module Songs
           }
         end
 
+        PianoFingeringSolver.solve_song_steps!(steps)
+
         first_chord = steps.dig(0, "levels", "original", "chord") || "C"
         time_sig = "#{numerator}/#{denominator}"
         presets = [ [ bpm - 20, 36 ].max, [ bpm - 10, 40 ].max, bpm ].uniq
