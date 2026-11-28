@@ -111,13 +111,21 @@ class AudioTranscriptionImportJob < ApplicationJob
 
     out, err, status = run_command_with_timeout(base_cmd, timeout: timeout_sec, label: "Download YouTube")
 
-    # Automatic fallback using alternate YouTube mobile/VR clients if web SABR blocks the stream.
     unless status.success?
+      combined = "#{err}\n#{out}"
+      if youtube_rate_limited_or_bot_gated?(combined)
+        raise StandardError, youtube_gate_error_message
+      end
+
+      # Automatic fallback using alternate YouTube mobile/VR clients for format/SABR issues.
       fallback_cmd = build_ytdlp_command(yt_bin, out_template, source_url, extractor_args: "youtube:player_client=android_vr,ios,web")
       f_out, f_err, f_status = run_command_with_timeout(fallback_cmd, timeout: timeout_sec, label: "Download YouTube (fallback)")
       if f_status.success?
         out, err, status = f_out, f_err, f_status
       else
+        f_combined = "#{f_err}\n#{f_out}\n#{combined}"
+        raise StandardError, youtube_gate_error_message if youtube_rate_limited_or_bot_gated?(f_combined)
+
         detail = f_err.to_s.strip.presence || err.to_s.strip.presence || out.to_s.strip.presence || "erro desconhecido"
         raise StandardError, "Falha ao baixar áudio da URL: #{detail}"
       end
@@ -128,6 +136,16 @@ class AudioTranscriptionImportJob < ApplicationJob
 
     meta = load_ytdlp_metadata(dir)
     [ audio_file, meta ]
+  end
+
+  def youtube_rate_limited_or_bot_gated?(output)
+    output.match?(/Sign in to confirm you.?re not a bot|HTTP Error 429|Too Many Requests/i)
+  end
+
+  def youtube_gate_error_message
+    "O YouTube bloqueou temporariamente este IP (HTTP 429 / verificação de login). " \
+      "Use o botão '🎙️ Gravar Microfone' para captar a música tocando agora, ou forneça seus cookies " \
+      "autenticados em YTDLP_COOKIES_FILE (/rails/storage/youtube_cookies.txt)."
   end
 
   def build_ytdlp_command(yt_bin, out_template, source_url, extractor_args: nil)

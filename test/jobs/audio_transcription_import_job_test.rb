@@ -121,4 +121,59 @@ class AudioTranscriptionImportJobTest < ActiveJob::TestCase
     assert_equal [ "D4", "F#4", "A4" ], song.payload.dig("steps", 0, "levels", "easy", "rh", 0, "notes")
     assert Songs::SchemaValidator.validate(song.payload).valid?
   end
+
+  test "fails fast with actionable message on YouTube 429 or bot sign-in gate and passes cookies when configured" do
+    song = Song.create!(
+      slug: "yt-rate-limited",
+      title: "Rate Limited Song",
+      source_type: "audio_youtube",
+      source_url: "https://www.youtube.com/watch?v=SeDyYtIuhsA",
+      status: "processing",
+      payload: {}
+    )
+
+    Dir.mktmpdir("fake_yt_429") do |bin_dir|
+      calls_file = File.join(bin_dir, "calls.txt")
+      args_file = File.join(bin_dir, "args.txt")
+      cookies_file = File.join(bin_dir, "cookies.txt")
+      File.write(cookies_file, "# Netscape HTTP Cookie File\n")
+
+      fake_ytdlp = File.join(bin_dir, "fake_ytdlp")
+      File.write(fake_ytdlp, <<~SH)
+        #!/usr/bin/env bash
+        echo "call" >> "#{calls_file}"
+        printf '%s\\n' "$@" > "#{args_file}"
+        echo "ERROR: [youtube] SeDyYtIuhsA: Sign in to confirm you're not a bot. HTTP Error 429: Too Many Requests" >&2
+        exit 1
+      SH
+      File.chmod(0o755, fake_ytdlp)
+
+      fake_transcriber = File.join(bin_dir, "fake_basic_pitch")
+      File.write(fake_transcriber, "#!/usr/bin/env bash\nexit 0\n")
+      File.chmod(0o755, fake_transcriber)
+
+      prev_bp = ENV["BASIC_PITCH_BIN"]
+      prev_yt = ENV["YTDLP_BIN"]
+      prev_cookies = ENV["YTDLP_COOKIES_FILE"]
+      ENV["BASIC_PITCH_BIN"] = fake_transcriber
+      ENV["YTDLP_BIN"] = fake_ytdlp
+      ENV["YTDLP_COOKIES_FILE"] = cookies_file
+      begin
+        AudioTranscriptionImportJob.perform_now(song.id)
+      ensure
+        ENV["BASIC_PITCH_BIN"] = prev_bp
+        ENV["YTDLP_BIN"] = prev_yt
+        ENV["YTDLP_COOKIES_FILE"] = prev_cookies
+      end
+
+      assert_equal 1, File.readlines(calls_file).size, "Should not retry YouTube immediately on 429 / bot-check gate"
+      yt_args = File.readlines(args_file, chomp: true)
+      assert_includes yt_args, "--cookies"
+      assert_includes yt_args, cookies_file
+    end
+
+    song.reload
+    assert_equal "failed", song.status
+    assert_match(/YouTube bloqueou temporariamente|cookies|microfone/i, song.error_message)
+  end
 end

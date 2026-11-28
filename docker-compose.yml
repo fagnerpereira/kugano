@@ -15,6 +15,7 @@ services:
       BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
       YTDLP_BIN: /opt/audio_venv/bin/yt-dlp
       YTDLP_JS_RUNTIME: bun
+      YTDLP_COOKIES_FILE: /rails/storage/youtube_cookies.txt
     volumes:
       - sqlite_storage:/rails/storage
     command: bash -c "bin/rails db:prepare db:seed && ./bin/thrust ./bin/rails server"
@@ -39,6 +40,7 @@ services:
       BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
       YTDLP_BIN: /opt/audio_venv/bin/yt-dlp
       YTDLP_JS_RUNTIME: bun
+      YTDLP_COOKIES_FILE: /rails/storage/youtube_cookies.txt
     volumes:
       - sqlite_storage:/rails/storage
     command: ./bin/jobs
