@@ -70,31 +70,32 @@ export class SheetRenderer {
 
     const padL = 56
     const usableW = mWidth - padL - 20
-    const totalTicks = ticksPerMeasure || 16
+    const totalTicks = Math.max(4, ticksPerMeasure || 16)
     const tickToX = t => x0 + padL + (t / totalTicks) * usableW
 
-    // Divisões suaves dos 4 tempos e áreas clicáveis
-    for (let b = 0; b < 4; b++) {
+    // Dynamic beat divisions based on ticksPerMeasure (supports 4/4, 3/4, 6/8, 2/4, etc.)
+    const numBeats = Math.max(1, Math.round(totalTicks / 4))
+    for (let b = 0; b < numBeats; b++) {
       const bx = tickToX(b * 4)
       if (b > 0) {
         addEl("line", { x1: bx, y1: 54, x2: bx, y2: 256, stroke: lineCol, "stroke-width": "1", "stroke-dasharray": "4 4", opacity: "0.55" })
       }
-      addEl("text", { x: bx + usableW / 8, y: 50, fill: mutedCol, "font-size": "11", "font-weight": "700", "text-anchor": "middle", "font-family": "JetBrains Mono, monospace" }).textContent = `T${b + 1}`
+      addEl("text", { x: bx + usableW / (numBeats * 2), y: 50, fill: mutedCol, "font-size": "11", "font-weight": "700", "text-anchor": "middle", "font-family": "JetBrains Mono, monospace" }).textContent = `T${b + 1}`
     }
 
     // Playhead (linha vertical azul no tempo ativo)
     const focusT = isCurrent ? (state.frozenTick >= 0 ? state.frozenTick : state.activeTick) : -1
     if (focusT >= 0) {
-      const px = tickToX(focusT)
-      addEl("rect", { x: px - 6, y: 52, width: usableW / 8, height: 206, fill: "#3b82f6", opacity: "0.14", rx: "6" })
+      const px = tickToX(Math.min(focusT, totalTicks - 1))
+      addEl("rect", { x: px - 6, y: 52, width: usableW / Math.max(4, numBeats * 2), height: 206, fill: "#3b82f6", opacity: "0.14", rx: "6" })
       addEl("line", { x1: px, y1: 52, x2: px, y2: 258, stroke: "#3b82f6", "stroke-width": "2.5" })
     }
 
     const drawEvents = (events, isTreble, color, isVox = false) => {
-      events.forEach(ev => {
-        const cx = tickToX(ev.tick) + 12
-        const notes = isVox ? [ev.note] : ev.notes
-        const fingers = isVox ? [] : ev.fingers
+      ;(events || []).forEach(ev => {
+        const cx = tickToX(ev.tick || 0) + 12
+        const notes = isVox ? [ev.note] : (ev.notes || [])
+        const fingers = isVox ? [] : (ev.fingers || [])
         notes.forEach((nId, idx) => {
           const nObj = NOTE_MAP[nId]
           if (!nObj) return
@@ -138,9 +139,10 @@ export class SheetRenderer {
     if (state.showVoicePanel && step.voice?.length) drawEvents(step.voice, true, voxCol, true)
 
     // Zonas clicáveis por colcheia para congelar/ouvir aquele instante
-    for (let e = 0; e < 8; e++) {
+    const numSlices = Math.max(2, Math.floor(totalTicks / 2))
+    for (let e = 0; e < numSlices; e++) {
       const hit = addEl("rect", {
-        x: tickToX(e * 2), y: 52, width: usableW / 8, height: 206,
+        x: tickToX(e * 2), y: 52, width: usableW / numSlices, height: 206,
         fill: "transparent", style: "cursor: pointer;"
       })
       hit.addEventListener("click", () => {

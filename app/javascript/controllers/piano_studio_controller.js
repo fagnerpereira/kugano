@@ -63,6 +63,7 @@ export default class extends Controller {
 
   disconnect() {
     this.stopPlay(true)
+    this.cleanupMicRecorder()
     if (this.importPollTimer) clearInterval(this.importPollTimer)
     if (this.keyHandler) {
       document.removeEventListener("keydown", this.keyHandler)
@@ -77,7 +78,8 @@ export default class extends Controller {
       ticksPerMeasure: this.state.ticksPerMeasure,
       onSliceClick: (step, isCurrent, tick) => {
         if (!isCurrent) {
-          this.state.stepIndex = step.id - 1
+          const foundIdx = this.steps.indexOf(step)
+          this.state.stepIndex = foundIdx >= 0 ? foundIdx : Math.max(0, (step.id || 1) - 1)
         }
         this.state.frozenTick = tick
         this.triggerTickAudio(this.steps[this.state.stepIndex], this.state.frozenTick)
@@ -87,9 +89,12 @@ export default class extends Controller {
   }
 
   renderMeasureView() {
+    if (!this.steps.length) return
+    this.state.stepIndex = Math.max(0, Math.min(this.state.stepIndex, this.steps.length - 1))
     const step = this.steps[this.state.stepIndex]
-    if (!step) return
-    const lv = step.levels[this.state.level] || step.levels.faithful
+    if (!step || !step.levels) return
+    const lv = step.levels[this.state.level] || step.levels.faithful || step.levels.original || step.levels.easy
+    if (!lv) return
 
     document.getElementById("step-counter").textContent = `Compasso ${step.id} / ${this.steps.length}`
     document.getElementById("chord-badge").textContent = lv.chord
@@ -122,7 +127,9 @@ export default class extends Controller {
   }
 
   triggerTickAudio(step, tick) {
-    const lv = step.levels[this.state.level] || step.levels.faithful
+    if (!step || !step.levels) return
+    const lv = step.levels[this.state.level] || step.levels.faithful || step.levels.original || step.levels.easy
+    if (!lv) return
     const secPerTick = (60 / this.state.bpm) / 4
     const timbre = document.getElementById("voice-timbre-select")?.value || "rhodes"
 
@@ -130,13 +137,13 @@ export default class extends Controller {
       this.audio.playMetroClick(tick === 0)
     }
     if (this.state.handMode !== "rh") {
-      lv.lh.filter(e => e.tick === tick).forEach(e => {
-        e.notes.forEach(n => this.audio.playTone(n, Math.max(0.25, e.dur * secPerTick * 0.95), 0.72, false))
+      ;(lv.lh || []).filter(e => e.tick === tick).forEach(e => {
+        ;(e.notes || []).forEach(n => this.audio.playTone(n, Math.max(0.25, e.dur * secPerTick * 0.95), 0.72, false))
       })
     }
     if (this.state.handMode !== "lh") {
-      lv.rh.filter(e => e.tick === tick).forEach(e => {
-        e.notes.forEach(n => this.audio.playTone(n, Math.max(0.22, e.dur * secPerTick * 0.92), 0.78, false))
+      ;(lv.rh || []).filter(e => e.tick === tick).forEach(e => {
+        ;(e.notes || []).forEach(n => this.audio.playTone(n, Math.max(0.22, e.dur * secPerTick * 0.92), 0.78, false))
       })
     }
     if (this.state.showVoicePanel && document.getElementById("chk-voice-audio")?.checked && step.voice) {
@@ -459,6 +466,10 @@ export default class extends Controller {
       this.renderSheetSVG()
     })
 
+    document.getElementById("btn-mic-record")?.addEventListener("click", () => {
+      this.toggleMicRecording()
+    })
+
     document.querySelectorAll(".hand-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         this.state.handMode = btn.dataset.hand
@@ -487,5 +498,105 @@ export default class extends Controller {
       }
     }
     document.addEventListener("keydown", this.keyHandler)
+  }
+
+  async toggleMicRecording() {
+    const btn = document.getElementById("btn-mic-record")
+    const badge = document.getElementById("import-status-badge")
+
+    if (this.micRecorder && this.micRecorder.state === "recording") {
+      this.micRecorder.stop()
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      if (badge) badge.textContent = "❌ Seu navegador não suporta gravação de microfone (MediaRecorder)."
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg")
+
+      this.micStream = stream
+      this.micChunks = []
+      this.micRecorder = new MediaRecorder(stream, { mimeType })
+
+      this.micRecorder.ondataavailable = ev => {
+        if (ev.data && ev.data.size > 0) this.micChunks.push(ev.data)
+      }
+
+      this.micRecorder.onstop = async () => {
+        const chunks = this.micChunks || []
+        this.cleanupMicRecorder()
+        if (btn) btn.textContent = "🎙️ Gravar Microfone"
+        if (!chunks.length) return
+
+        const ext = mimeType.includes("ogg") ? "ogg" : "webm"
+        const blob = new Blob(chunks, { type: mimeType })
+        await this.uploadRecordedAudio(blob, ext)
+      }
+
+      this.micRecorder.start(500)
+      this.micStartedAt = Date.now()
+      if (btn) btn.textContent = "⏹ Parar e Transcrever (00:00)"
+      if (badge) badge.textContent = "🎙️ Ouvindo música pelo microfone... clique em Parar quando terminar."
+
+      this.micTimer = setInterval(() => {
+        const secs = Math.floor((Date.now() - this.micStartedAt) / 1000)
+        const mm = String(Math.floor(secs / 60)).padStart(2, "0")
+        const ss = String(secs % 60).padStart(2, "0")
+        if (btn) btn.textContent = `⏹ Parar e Transcrever (${mm}:${ss})`
+      }, 500)
+    } catch (err) {
+      this.cleanupMicRecorder()
+      if (badge) badge.textContent = `❌ Permissão de microfone negada ou indisponível: ${err.message}`
+    }
+  }
+
+  cleanupMicRecorder() {
+    if (this.micTimer) {
+      clearInterval(this.micTimer)
+      this.micTimer = null
+    }
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(t => t.stop())
+      this.micStream = null
+    }
+    this.micRecorder = null
+  }
+
+  async uploadRecordedAudio(blob, ext) {
+    const badge = document.getElementById("import-status-badge")
+    const titleInput = document.querySelector("#import-song-form input[name='song[title]']")
+    const nowLabel = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    const title = titleInput?.value?.trim() || `Captura Microfone ${nowLabel}`
+
+    const formData = new FormData()
+    formData.append("song[title]", title)
+    formData.append("song[source_file]", blob, `captura-microfone.${ext}`)
+
+    const csrfToken = document.querySelector("meta[name='csrf-token']")?.content
+    if (badge) badge.textContent = `⏳ Enviando captura "${title}" para transcrição...`
+
+    try {
+      const resp = await fetch("/songs/import.json", {
+        method: "POST",
+        headers: csrfToken ? { "X-CSRF-Token": csrfToken, "Accept": "application/json" } : { "Accept": "application/json" },
+        body: formData
+      })
+      const data = await resp.json()
+      if (!resp.ok) {
+        if (badge) badge.textContent = `❌ Falha ao enviar gravação: ${data.error || (data.errors || []).join(", ")}`
+        return
+      }
+      if (data.slug) {
+        this.pollImportingSong(data.slug)
+      }
+    } catch (err) {
+      if (badge) badge.textContent = `❌ Erro de rede ao enviar gravação: ${err.message}`
+    }
   }
 }

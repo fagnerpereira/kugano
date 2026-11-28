@@ -127,9 +127,16 @@ module Songs
     end
 
     def self.assign_fingers(notes, hand: :rh)
-      count = Array(notes).size.clamp(1, 5)
+      n_size = Array(notes).size
+      return [] if n_size.zero?
+
+      count = n_size.clamp(1, 5)
       template = hand == :lh ? LH_FINGER_TEMPLATES[count] : RH_FINGER_TEMPLATES[count]
-      template.first(Array(notes).size)
+      if n_size <= 5
+        template.first(n_size)
+      else
+        template + Array.new(n_size - 5, hand == :lh ? 1 : 5)
+      end
     end
 
     def self.ensure_fingers(notes, existing_fingers, hand: :rh)
@@ -162,27 +169,34 @@ module Songs
     end
 
     def self.normalize_events(events, hand:)
-      Array(events).map do |ev|
+      Array(events).filter_map do |ev|
         e = ev.deep_stringify_keys
-        notes = Array(e["notes"]).map(&:to_s)
-        {
+        raw_notes = Array(e["notes"]).map(&:to_s).reject(&:empty?)
+        next if raw_notes.empty?
+
+        notes, raw_fingers = PianoFingeringSolver.cap_playable_notes(raw_notes, e["fingers"])
+        event = {
           "tick" => e["tick"].to_i.clamp(0, 31),
           "dur" => e["dur"].to_i.clamp(1, 32),
           "notes" => notes,
-          "fingers" => ensure_fingers(notes, e["fingers"], hand: hand)
+          "fingers" => ensure_fingers(notes, raw_fingers, hand: hand)
         }
+        event["explicit_fingers"] = true if e["explicit_fingers"]
+        event
       end.sort_by { |e| e["tick"] }
     end
 
     def self.deep_copy_events(events)
       Array(events).map do |ev|
         e = ev.deep_stringify_keys
-        {
+        copy = {
           "tick" => e["tick"],
           "dur" => e["dur"],
           "notes" => Array(e["notes"]).dup,
           "fingers" => Array(e["fingers"]).dup
         }
+        copy["explicit_fingers"] = true if e["explicit_fingers"]
+        copy
       end
     end
 

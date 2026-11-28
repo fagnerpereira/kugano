@@ -16,7 +16,7 @@ WORKDIR /rails
 
 # Install base runtime packages:
 # - SQLite (primary database + Solid Queue / Solid Cache / Solid Cable)
-# - Audio/video tools (ffmpeg, yt-dlp) and Python (for audio transcription)
+# - Audio/video tools (ffmpeg, libsndfile1) and Python (for audio transcription)
 # - Headless Java + Tesseract OCR (for Audiveris OMR) and unzip (for .mxl archives)
 # - curl, libvips (Active Storage variants), and jemalloc (reduced memory usage)
 RUN apt-get update -qq && \
@@ -25,13 +25,12 @@ RUN apt-get update -qq && \
     ffmpeg \
     libgtk-3-0t64 \
     libjemalloc2 \
+    libsndfile1 \
     libvips \
     default-jre-headless \
     python3 \
-    python3-pip \
     sqlite3 \
-    unzip \
-    yt-dlp && \
+    unzip && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
@@ -44,7 +43,8 @@ ENV RAILS_ENV="production" \
     AUDIVERIS_BIN="/usr/local/bin/audiveris" \
     TESSDATA_PREFIX="/opt/audiveris/tessdata" \
     BASIC_PITCH_BIN="/usr/local/bin/basic-pitch" \
-    YTDLP_BIN="/usr/bin/yt-dlp"
+    YTDLP_BIN="/opt/audio_venv/bin/yt-dlp" \
+    YTDLP_JS_RUNTIME="bun"
 
 # Throw-away build stage to reduce size of final image
 FROM base AS build
@@ -89,7 +89,12 @@ RUN rm -rf node_modules
 # Final stage for app image
 FROM base
 
-# Install Audiveris 5.11.0 OMR from official release package, legacy Tesseract 4.x tessdata (eng + por), and audio CLI wrapper
+# Copy Bun runtime from build stage so yt-dlp can solve YouTube EJS challenges natively
+COPY --from=build /usr/local/bun/bin/bun /usr/local/bin/bun
+
+# Install Audiveris 5.11.0 OMR from official release package, legacy Tesseract 4.x tessdata (eng + por),
+# and a dedicated Python 3.11 virtual environment via uv with Spotify basic-pitch (ONNX CPU),
+# librosa harmonic/chord analysis, pretty_midi, and the latest yt-dlp[default] (with yt-dlp-ejs).
 ARG AUDIVERIS_DEB_URL="https://github.com/Audiveris/audiveris/releases/download/5.11.0/Audiveris-5.11.0-ubuntu24.04-x86_64.deb"
 ARG TESSDATA_BASE_URL="https://github.com/tesseract-ocr/tessdata/raw/main"
 RUN curl -fsSL -o /tmp/audiveris.deb "${AUDIVERIS_DEB_URL}" && \
@@ -99,7 +104,22 @@ RUN curl -fsSL -o /tmp/audiveris.deb "${AUDIVERIS_DEB_URL}" && \
     mkdir -p /opt/audiveris/tessdata && \
     curl -fsSL -o /opt/audiveris/tessdata/eng.traineddata "${TESSDATA_BASE_URL}/eng.traineddata" && \
     curl -fsSL -o /opt/audiveris/tessdata/por.traineddata "${TESSDATA_BASE_URL}/por.traineddata" && \
-    printf '#!/usr/bin/env bash\nexec python3 -m basic_pitch "$@"\n' > /usr/local/bin/basic-pitch && \
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
+    UV_PYTHON_INSTALL_DIR=/opt/uv_python uv venv --python 3.11 /opt/audio_venv && \
+    uv pip install --python /opt/audio_venv/bin/python --no-cache \
+    "numpy<2" \
+    onnxruntime \
+    librosa \
+    pretty_midi \
+    scipy \
+    resampy \
+    mir_eval \
+    typing-extensions \
+    "yt-dlp[default]" && \
+    uv pip install --python /opt/audio_venv/bin/python --no-cache --no-deps basic-pitch && \
+    ln -sf /opt/audio_venv/bin/yt-dlp /usr/local/bin/yt-dlp && \
+    chmod -R a+rX /opt/uv_python /opt/audio_venv && \
+    printf '#!/usr/bin/env bash\nexec /opt/audio_venv/bin/python /rails/script/transcribe_audio.py "$@"\n' > /usr/local/bin/basic-pitch && \
     chmod +x /usr/local/bin/basic-pitch
 
 # Run and own only the runtime files as a non-root user for security

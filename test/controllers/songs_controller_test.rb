@@ -183,4 +183,23 @@ class SongsControllerTest < ActionDispatch::IntegrationTest
     assert_response :accepted
     assert_equal({ ocr_language: "por", sheets: "1-4" }, enqueued.arguments.last)
   end
+
+  test "POST /songs/import accepts .webm microphone recordings and enqueues AudioTranscriptionImportJob" do
+    webm_file = Rack::Test::UploadedFile.new(StringIO.new("WEBM_AUDIO_BYTES"), "audio/webm", false, original_filename: "gravacao-mic.webm")
+
+    assert_enqueued_with(job: AudioTranscriptionImportJob, queue: "omr") do
+      post import_songs_url(format: :json), params: { song: { title: "Gravação Microfone", source_file: webm_file } }
+    end
+
+    assert_response :accepted
+    body = JSON.parse(response.body)
+    assert_equal "processing", body["status"]
+    assert_equal "audio_youtube", body["source_type"]
+  end
+
+  test "GET / studio header renders microphone capture button inside import drawer" do
+    get root_url
+    assert_response :success
+    assert_select "#btn-mic-record"
+  end
 end

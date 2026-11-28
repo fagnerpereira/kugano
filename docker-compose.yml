@@ -13,7 +13,9 @@ services:
       FORCE_SSL: "false"
       AUDIVERIS_BIN: /usr/local/bin/audiveris
       BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
-      YTDLP_BIN: /usr/bin/yt-dlp
+      YTDLP_BIN: /opt/audio_venv/bin/yt-dlp
+      YTDLP_JS_RUNTIME: bun
+      YTDLP_COOKIES_FILE: /rails/storage/youtube_cookies.txt
     volumes:
       - sqlite_storage:/rails/storage
     command: bash -c "bin/rails db:prepare db:seed && ./bin/thrust ./bin/rails server"
@@ -36,7 +38,9 @@ services:
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local_docker_compose_secret_key_base_0123456789abcdef0123456789abcdef}
       AUDIVERIS_BIN: /usr/local/bin/audiveris
       BASIC_PITCH_BIN: /usr/local/bin/basic-pitch
-      YTDLP_BIN: /usr/bin/yt-dlp
+      YTDLP_BIN: /opt/audio_venv/bin/yt-dlp
+      YTDLP_JS_RUNTIME: bun
+      YTDLP_COOKIES_FILE: /rails/storage/youtube_cookies.txt
     volumes:
       - sqlite_storage:/rails/storage
     command: ./bin/jobs
